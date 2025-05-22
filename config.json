@@ -1,0 +1,16 @@
+{
+    "sampleRate": 48000,
+    "blockSize": 2000,
+    "inDeviceIndex": 2,
+    "outDeviceIndex": 2,
+    "dtype": "int16",
+    "inChannel": [
+        1,
+        2
+    ],
+    "outChannel": [
+        1,
+        2
+    ],
+    "modelPath": ""
+}
