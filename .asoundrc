@@ -1,0 +1,60 @@
+pcm.webcam_mic {
+    type plug
+    slave {
+        pcm "hw:3,0"
+        channels 2
+    }
+}
+
+pcm.scarlett_input {
+    type plug
+    slave {
+        pcm "hw:4,0"
+        channels 6
+    }
+    ttable.0.0 1  # Map input channel 2 to stereo L
+    ttable.1.1 1
+}
+
+pcm.input_mix {
+    type multi
+    slaves.a.pcm webcam_mic
+    slaves.a.channels 2
+    slaves.b.pcm scarlett_input
+    slaves.b.channels 2
+    bindings.0.slave a
+    bindings.0.channel 0
+    bindings.1.slave a
+    bindings.1.channel 1
+    bindings.2.slave b
+    bindings.2.channel 0
+    bindings.3.slave b
+    bindings.3.channel 1
+}
+
+pcm.mixed_input {
+    type route
+    slave {
+        pcm "input_mix"
+        channels 4
+    }
+    ttable.0.0 0.5  # webcam L
+    ttable.1.1 0.5  # webcam R
+    ttable.2.0 0.5  # scarlett L
+    ttable.3.1 0.5  # scarlett R
+}
+
+pcm.output {
+    type plug
+    slave.pcm "hw:0,0"
+}
+
+pcm.final_mix {
+    type plug
+    slave.pcm "output"
+}
+
+pcm.!default {
+    type plug
+    slave.pcm "final_mix"
+}
