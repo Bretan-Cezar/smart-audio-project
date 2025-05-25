@@ -6,13 +6,15 @@ sudo apt install jackd2 qjackctl alsa-utils pulseaudio-module-jack # install JAC
 sudo usermod -aG audio $USER
 sudo reboot
 
-arecord -l # see device indices
+aplay -l                                                           # get audio output card number
+jackd -d alsa -d hw:0,0 -o2                                        # replace card number if necessary
 
-jackd -d alsa -d hw:0,0 -o2 # start JACK server on playback device
-alsa_in -j mic -d hw:4,0 -r 48000 -c2 # start ALSA input
-alsa_in -j scarlett -d hw:3,0 -r 48000 -c6 # start ALSA input
+arecord -l                                                         # get audio input card numbers
+alsa_in -j mic -d hw:4,0 -r 48000 -c2                              # replace card number if necessary
+alsa_in -j scarlett -d hw:3,0 -r 48000 -c6                         # replace card number if necessary
 
-jack_connect mic:capture_1 system:playback_1 # 
-jack_connect mic:capture_2 system:playback_2 
-jack_connect scarlett:capture_1 system:playback_1 
-jack_connect scarlett:capture_2 system:playback_2 
+# Connections done upon starting python mixer, can also be done manually
+# jack_connect mic:capture_1 system:playback_1 
+# jack_connect mic:capture_2 system:playback_2 
+# jack_connect scarlett:capture_1 system:playback_1 
+# jack_connect scarlett:capture_2 system:playback_2 

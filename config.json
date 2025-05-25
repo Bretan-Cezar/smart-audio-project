@@ -1,16 +1,12 @@
 {
-    "sampleRate": 48000,
-    "blockSize": 2000,
-    "inDeviceIndex": 2,
-    "outDeviceIndex": 2,
-    "dtype": "int16",
-    "inChannel": [
-        1,
-        2
-    ],
-    "outChannel": [
-        1,
-        2
-    ],
+    "clientName": "ambient-sound-mixer",
+    "leftChannelMediaPort": "scarlett:capture_1",
+    "leftChannelMicPort": "mic:capture_1",
+    "rightChannelMediaPort": "scarlett:capture_2",
+    "rightChannelMicPort": "mic:capture_2",
+    "leftChannelOutPort": "system:playback_1",
+    "rightChannelOutPort": "system:playback_2",
+    "mediaInputGain": 0.4,
+    "micInputGain": 0.6,
     "modelPath": ""
 }
