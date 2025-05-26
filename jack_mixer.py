@@ -1,15 +1,18 @@
 import numpy as np
 from jack import Client, OwnPort
 import json
-from threading import Event, Thread, Lock
+from threading import Event, Thread
 from shutil import get_terminal_size
 from vol_ctrl import volume_change
+from multiprocessing import Value
+from typing import Any
+import ctypes
 
 config: dict
 SR: int
 BLOCK_SIZE: int
-GAIN_MEDIA: float
-GAIN_MIC: float
+GAIN_MEDIA: Any
+GAIN_MIC: Any
 
 if __name__ == "__main__":
     
@@ -31,8 +34,8 @@ if __name__ == "__main__":
     R_MIC_PORT = config["rightChannelMicPort"]
     L_OUTPORT = config["leftChannelOutPort"]
     R_OUTPORT = config["rightChannelOutPort"]
-    GAIN_MEDIA = config["mediaInputGain"]
-    GAIN_MIC = config["micInputGain"]
+    GAIN_MEDIA = Value(ctypes.c_float, float(config["mediaInputGain"]), lock=True)
+    GAIN_MIC = Value(ctypes.c_float, float(config["micInputGain"]), lock=True)
 
     inport_pairs = []
 
@@ -77,14 +80,13 @@ if __name__ == "__main__":
     def process(frames: int):
         # assert len(client.inports) == len(client.outports)
         # assert frames == BLOCK_SIZE
-        
         buf_micL = np.array(micL.get_array(), dtype=np.float32)
         buf_micR = np.array(micR.get_array(), dtype=np.float32)
         buf_mediaL = np.array(mediaL.get_array(), dtype=np.float32)
         buf_mediaR = np.array(mediaR.get_array(), dtype=np.float32)
 
-        buf_mixL = (GAIN_MEDIA * buf_mediaL) + (GAIN_MIC * buf_micL)
-        buf_mixR = (GAIN_MEDIA * buf_mediaR) + (GAIN_MIC * buf_micR)
+        buf_mixL = (GAIN_MEDIA.value * buf_mediaL) + (GAIN_MIC.value * buf_micL)
+        buf_mixR = (GAIN_MEDIA.value * buf_mediaR) + (GAIN_MIC.value * buf_micR)
 
         outL.get_array()[:] = buf_mixL
         outR.get_array()[:] = buf_mixR
@@ -111,9 +113,8 @@ if __name__ == "__main__":
 
         print("JACK CLIENT STARTED, ctrl+c TO QUIT".center(get_terminal_size().columns, "="))
 
-        lock = Lock()
-        t1 = Thread(target = volume_change, args=(GAIN_MIC, GAIN_MEDIA, lock))
-
+        # lock = RLock()
+        t1 = Thread(target = volume_change, args=(GAIN_MIC, GAIN_MEDIA))
 
         try:
             t1.start()

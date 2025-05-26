@@ -1,11 +1,22 @@
-def volume_change(vol_mic, vol_media, lock):
+def range_limit(vol):
+    if (vol.value < 0.0):
+        vol.value = 0.0
+    if (vol.value > 1.0):
+        vol.value = 1.0
+
+def volume_change(vol_mic, vol_media):
     while  True:
         try:
-            volume = input("Enter increasing volume: ")
+            volume = float(input("Enter increasing volume: "))
+            
+            vol_mic.value += volume
+            range_limit(vol_mic)
+            
+            vol_media.value -= volume
+            range_limit(vol_media)
 
-            lock.acquire()
-            vol_mic += volume
-            vol_media -= vol_mic
-            lock.release()
         except KeyboardInterrupt:
             break
+
+
+        
