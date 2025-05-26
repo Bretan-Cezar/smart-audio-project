@@ -1,8 +1,9 @@
 import numpy as np
 from jack import Client, OwnPort
 import json
-from threading import Event
+from threading import Event, Thread, Lock
 from shutil import get_terminal_size
+from vol_ctrl import volume_change
 
 config: dict
 SR: int
@@ -110,8 +111,16 @@ if __name__ == "__main__":
 
         print("JACK CLIENT STARTED, ctrl+c TO QUIT".center(get_terminal_size().columns, "="))
 
+        lock = Lock()
+        t1 = Thread(target = volume_change, args=(GAIN_MIC, GAIN_MEDIA, lock))
+
+
         try:
+            t1.start()
             event.wait()
         except KeyboardInterrupt:
+            t1.join()
             print("\nUser Interrupt")
+
+
 

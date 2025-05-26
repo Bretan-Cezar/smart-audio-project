@@ -6,7 +6,7 @@
     "rightChannelMicPort": "mic:capture_2",
     "leftChannelOutPort": "system:playback_1",
     "rightChannelOutPort": "system:playback_2",
-    "mediaInputGain": 0.4,
-    "micInputGain": 0.6,
+    "mediaInputGain": 1.0,
+    "micInputGain": 0.0,
     "modelPath": ""
 }
