@@ -1,7 +1,9 @@
 import torch
-from transformers import WhisperProcessor, WhisperForConditionalGeneration
+from transformers import WhisperProcessor, WhisperForConditionalGeneration, pipeline
 import soundfile as sf
 import numpy as np
+import librosa
+import whisper
 
 def range_limit(vol):
     if (vol.value < 0.0):
@@ -24,15 +26,24 @@ def volume_change(vol_mic, vol_media):
             break
 
 if __name__ == "__main__":
-    processor = WhisperProcessor.from_pretrained("openai/whisper-small")
-    model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-small")
-    model.config.forced_decoder_ids = None
+    # processor = WhisperProcessor.from_pretrained("openai/whisper-small")
+    # model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-small")
+    # model.config.forced_decoder_ids = None
 
+    model = whisper.load_model("small")
     sample: np.ndarray
 
     with open("./recorded_audio.wav", "rb") as f:
         sample, sr = sf.read(f)
+        sample = librosa.resample(sample, orig_sr = sr, target_sr = 16000)
 
-    print(sample.shape)
+    # input_features = processor(sample[:,0], sampling_rate = 16000, return_tensors="pt").input_features
+    # predicted_ids = model.generate(input_features)
+    # transcription = processor.batch_decode(predicted_ids, skip_special_tokens=True)
+
+    result = model.transcribe("recorded_audio.wav")
+
+
+    print(result["text"])
 
         
