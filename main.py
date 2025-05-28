@@ -3,16 +3,20 @@ from jack import Client, OwnPort
 import json
 from threading import Event
 from shutil import get_terminal_size
-from vol_ctrl import volume_change
+from vol_ctrl import volume_handler
+from detector import transcription_handler
+from audio_chunk_handler import chunk_handler
 from multiprocessing import Value, Queue, Process
 from typing import Any
 import ctypes
+from utils import VolumeCommand
 
 config: dict
 SR: int
 BLOCK_SIZE: int
 GAIN_MEDIA: Any
 GAIN_MIC: Any
+
 
 if __name__ == "__main__":
     
@@ -78,9 +82,12 @@ if __name__ == "__main__":
     outL: OwnPort
     outR: OwnPort
 
-    q = Queue()
+    q_audio_chunks = Queue()
+    q_transcriber = Queue()
+    q_volume_control = Queue()
     
     def process(frames: int):
+
         buf_micL = np.array(micL.get_array(), dtype=np.float32)
         buf_micR = np.array(micR.get_array(), dtype=np.float32)
         buf_mediaL = np.array(mediaL.get_array(), dtype=np.float32)
@@ -94,7 +101,7 @@ if __name__ == "__main__":
 
         if frames == BLOCK_SIZE:
             audio_chunk = np.stack((buf_micL, buf_micR)) 
-            q.put(audio_chunk)
+            q_audio_chunks.put(audio_chunk)
 
 
     client.set_process_callback(process)
@@ -118,13 +125,22 @@ if __name__ == "__main__":
 
         print("JACK CLIENT STARTED, ctrl+c TO QUIT".center(get_terminal_size().columns, "="))
 
-        p1 = Process(target = volume_change, args=(GAIN_MIC, GAIN_MEDIA, q, NAME_SEARCH))
+        p1 = Process(target=chunk_handler, args=(q_audio_chunks, q_transcriber))
+        p2 = Process(target=transcription_handler, args=(NAME_SEARCH, q_transcriber, q_volume_control))
+        p3 = Process(target=volume_handler, args=(GAIN_MIC, GAIN_MEDIA, q_volume_control))
 
         try:
             p1.start()
+            p2.start()
+            p3.start()
+
             event.wait()
+
         except KeyboardInterrupt:
             p1.join()
-            print("\nUser Interrupt")
+            p2.join()
+            p3.join()
 
+            print("\nDeactivating JACK Client...")
+            client.deactivate()
 

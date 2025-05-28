@@ -1,112 +1,58 @@
-import soundfile as sf
-import numpy as np
-import librosa
-from faster_whisper import WhisperModel
 import time
-from threading import Thread
+from utils import VolumeCommand
+
+def range_limit(vol, min=0.0, max=1.0):
+    if (vol.value < min):
+        vol.value = min
+    if (vol.value > max):
+        vol.value = max
 
 
-def range_limit(vol):
-    if (vol.value < 0.0):
-        vol.value = 0.0
-    if (vol.value > 1.0):
-        vol.value = 1.0
+def volume_step(vol, step):
+    vol.value += step
+    range_limit(vol)
 
 
-def volume_step(vol_mic, vol_media, step_vol):
-    vol_mic.value += step_vol
-    range_limit(vol_mic)
+def volume_handler(vol_mic, vol_media, q_volume_control):
 
-    vol_media.value -= step_vol
-    range_limit(vol_media)
+    print("Volume Handler Process started")
 
-
-def word_check(sentence, target_word):
-    word_chunk = sentence.lower().replace(".", "").replace(",", "").split(' ')
-
-    for word in word_chunk:
-        if target_word == word:
-            return True
-
-    return False
-
-
-def transcribe_buffer(audio_buffer, model):
-    segments, _ = model.transcribe(audio_buffer, beam_size=5)
-    result_text = ""
-
-    for segment in segments:
-        result_text += segment.text
-
-    return result_text
-
-
-def volume_adjust_thread(audio_buffer_copy, model, vol_mic, vol_media, name):
-    transcribe_text = transcribe_buffer(audio_buffer_copy, model)
-
-    if (word_check(transcribe_text, name)):
-    
-        for _ in range(5):
-            volume_step(vol_mic, vol_media, 0.1)
-            time.sleep(0.1)
-
-
-
-def volume_change(vol_mic, vol_media, q, name):
-    audio_buffer = np.empty((2, 49152))
-    length = 0
-    model = WhisperModel("tiny", device="cpu", compute_type="int8")
+    step_vol_mic: float
+    step_vol_media: float
 
     while True:
+
         try:
 
-            audio_chunk = q.get()
-            
-            chunk_length = audio_chunk.shape[1]
+            volume_targets: VolumeCommand = q_volume_control.get() 
 
-            audio_buffer[:, length:length+chunk_length] = audio_chunk[:, :]
+            print(f"Volume Handler received VolumeCommand[ GAIN_MEDIA_TARGET={volume_targets.GAIN_MEDIA_TARGET} ; GAIN_MIC_TARGET={volume_targets.GAIN_MIC_TARGET} ]")
 
-            length += chunk_length
+            if vol_mic.value < volume_targets.GAIN_MIC_TARGET:
+                step_vol_mic = 0.1
+            elif vol_mic.value > volume_targets.GAIN_MIC_TARGET:
+                step_vol_mic = -0.1
+            else:
+                step_vol_mic = 0.0
 
-            if (length >= 49152):
+            if vol_media.value < volume_targets.GAIN_MEDIA_TARGET:
+                step_vol_media = 0.1
+            elif vol_media.value > volume_targets.GAIN_MEDIA_TARGET:
+                step_vol_media = -0.1
+            else:
+                step_vol_media = 0.0
 
-                audio_buffer_copy = audio_buffer.copy()
+            while vol_mic.value != volume_targets.GAIN_MIC_TARGET and vol_media.value != volume_targets.GAIN_MEDIA_TARGET:
 
-                audio_buffer[:, :length//2] = audio_buffer[:, length//2:length]
-                length = length // 2
+                if vol_mic.value != volume_targets.GAIN_MIC_TARGET:
+                    volume_step(vol_mic, step_vol_mic)
 
-                Thread(target = volume_adjust_thread, args = (audio_buffer_copy, model, vol_mic, vol_media, name), daemon=True).start()
-
-
+                if vol_media.value != volume_targets.GAIN_MEDIA_TARGET:
+                    volume_step(vol_media, step_vol_media)
+                
+                time.sleep(0.1)
+                
         except KeyboardInterrupt:
+            print("Volume Handler Process stopped")
             break
 
-if __name__ == "__main__":
-    pass
-    # processor = WhisperProcessor.from_pretrained("openai/whisper-small")
-    # model = WhisperForConditionalGeneration.from_pretrained("openai/whisper-small")
-    # model.config.forced_decoder_ids = None
-
-#     model = WhisperModel("tiny", device="cpu", compute_type="int8")
-#     sample: np.ndarray
-# 
-#     with open("./recorded_audio.wav", "rb") as f:
-#         sample, sr = sf.read(f)
-#         # sample = librosa.resample(sample, orig_sr = sr, target_sr = 16000)
-# 
-#     # input_features = processor(sample[:,0], sampling_rate = 16000, return_tensors="pt").input_features
-#     # predicted_ids = model.generate(input_features)
-#     # transcription = processor.batch_decode(predicted_ids, skip_special_tokens=True)
-# 
-#     print("Model initialized")
-#     print("Transcription #1...")
-#     segments, info = model.transcribe("recorded_audio.wav", beam_size=5)
-#     for segment in segments:
-#         print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
-#     
-# 
-#     print("Transcription #2...")
-#     segments, info = model.transcribe("recorded_audio.wav", beam_size=5)
-#     for segment in segments:
-#         print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
-# 
