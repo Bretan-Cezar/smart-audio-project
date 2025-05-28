@@ -4,9 +4,10 @@ import json
 from threading import Event, Thread
 from shutil import get_terminal_size
 from vol_ctrl import volume_change
-from multiprocessing import Value
+from multiprocessing import Value, Queue
 from typing import Any
 import ctypes
+
 
 config: dict
 SR: int
@@ -36,6 +37,7 @@ if __name__ == "__main__":
     R_OUTPORT = config["rightChannelOutPort"]
     GAIN_MEDIA = Value(ctypes.c_float, float(config["mediaInputGain"]), lock=True)
     GAIN_MIC = Value(ctypes.c_float, float(config["micInputGain"]), lock=True)
+    NAME_SEARCH = Value(ctypes.c_wchar_p, config["nameSearch"])
 
     inport_pairs = []
 
@@ -91,6 +93,8 @@ if __name__ == "__main__":
         outL.get_array()[:] = buf_mixL
         outR.get_array()[:] = buf_mixR
 
+        q.put(np.stack((buf_micL, buf_micR)))
+
 
     client.set_process_callback(process)
 
@@ -114,7 +118,8 @@ if __name__ == "__main__":
         print("JACK CLIENT STARTED, ctrl+c TO QUIT".center(get_terminal_size().columns, "="))
 
         # lock = RLock()
-        t1 = Thread(target = volume_change, args=(GAIN_MIC, GAIN_MEDIA))
+        q = Queue()
+        t1 = Thread(target = volume_change, args=(GAIN_MIC, GAIN_MEDIA, q, NAME_SEARCH))
 
         try:
             t1.start()

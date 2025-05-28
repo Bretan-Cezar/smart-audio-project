@@ -8,5 +8,6 @@
     "rightChannelOutPort": "system:playback_2",
     "mediaInputGain": 1.0,
     "micInputGain": 0.0,
-    "modelPath": ""
+    "modelPath": "",
+    "nameSearch": "Foo"
 }
