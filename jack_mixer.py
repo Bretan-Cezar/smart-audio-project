@@ -4,7 +4,7 @@ import json
 from threading import Event, Thread
 from shutil import get_terminal_size
 from vol_ctrl import volume_change
-from multiprocessing import Value, Queue
+from multiprocessing import Value, Queue, Process
 from typing import Any
 import ctypes
 
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 
         # lock = RLock()
         q = Queue()
-        t1 = Thread(target = volume_change, args=(GAIN_MIC, GAIN_MEDIA, q, NAME_SEARCH))
+        p1 = Process(target = volume_change, args=(GAIN_MIC, GAIN_MEDIA, q, NAME_SEARCH))
 
         try:
             t1.start()

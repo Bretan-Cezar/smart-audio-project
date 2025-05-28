@@ -3,6 +3,7 @@ import numpy as np
 import librosa
 from faster_whisper import WhisperModel
 import time
+from threading import Thread
 
 def range_limit(vol):
     if (vol.value < 0.0):
@@ -33,6 +34,12 @@ def transcribe_buffer(audio_buffer, model):
 
     return result_text
 
+def volume_adjust_thread(audio_buffer_copy, model, vol_mic, vol_media, name):
+    transcribe_text = transcribe_buffer(audio_buffer_copy, model)
+    if (word_check(transcribe_text, name)):
+        for i in range(5):
+            volume_step(vol_mic, vol_media, 0.1)
+            time.sleep(0.1)
 def volume_change(vol_mic, vol_media, q, name):
     audio_buffer = np.empty(2, 48128)
     length = 0
@@ -44,13 +51,10 @@ def volume_change(vol_mic, vol_media, q, name):
             audio_buffer[length : length + audio_chunk.shape[0]] = audio_chunk
             length += audio_chunk.shape[0]
             if (length >= 48128):
-                transcribe_text = transcribe_buffer(audio_buffer, model)
-
-                if (word_check(transcribe_text, name)):
-                    for i in range(5):
-                        volume_step(vol_mic, vol_media, 0.1)
-                        time.sleep(0.1)
-                audio_buffer[:length//2] = audio_buffer[length//+1:]
+                audio_buffer_copy = audio_buffer.copy()
+                t1 = Thread(target = volume_adjust_thread, args = (audio_buffer_copy, model, vol_mic, vol_media, name), daemon=True)
+                t1.start()
+                audio_buffer[:length//2] = audio_buffer[length//2+1:length]
 
         except KeyboardInterrupt:
             break
