@@ -1,13 +1,12 @@
 import numpy as np
 from jack import Client, OwnPort
 import json
-from threading import Event, Thread
+from threading import Event
 from shutil import get_terminal_size
 from vol_ctrl import volume_change
 from multiprocessing import Value, Queue, Process
 from typing import Any
 import ctypes
-
 
 config: dict
 SR: int
@@ -37,7 +36,7 @@ if __name__ == "__main__":
     R_OUTPORT = config["rightChannelOutPort"]
     GAIN_MEDIA = Value(ctypes.c_float, float(config["mediaInputGain"]), lock=True)
     GAIN_MIC = Value(ctypes.c_float, float(config["micInputGain"]), lock=True)
-    NAME_SEARCH = Value(ctypes.c_wchar_p, config["nameSearch"])
+    NAME_SEARCH = Value(ctypes.c_wchar_p, str(config["nameSearch"]).lower())
 
     inport_pairs = []
 
@@ -79,9 +78,9 @@ if __name__ == "__main__":
     outL: OwnPort
     outR: OwnPort
 
+    q = Queue()
+    
     def process(frames: int):
-        # assert len(client.inports) == len(client.outports)
-        # assert frames == BLOCK_SIZE
         buf_micL = np.array(micL.get_array(), dtype=np.float32)
         buf_micR = np.array(micR.get_array(), dtype=np.float32)
         buf_mediaL = np.array(mediaL.get_array(), dtype=np.float32)
@@ -93,7 +92,9 @@ if __name__ == "__main__":
         outL.get_array()[:] = buf_mixL
         outR.get_array()[:] = buf_mixR
 
-        q.put(np.stack((buf_micL, buf_micR)))
+        if frames == BLOCK_SIZE:
+            audio_chunk = np.stack((buf_micL, buf_micR)) 
+            q.put(audio_chunk)
 
 
     client.set_process_callback(process)
@@ -117,16 +118,13 @@ if __name__ == "__main__":
 
         print("JACK CLIENT STARTED, ctrl+c TO QUIT".center(get_terminal_size().columns, "="))
 
-        # lock = RLock()
-        q = Queue()
         p1 = Process(target = volume_change, args=(GAIN_MIC, GAIN_MEDIA, q, NAME_SEARCH))
 
         try:
-            t1.start()
+            p1.start()
             event.wait()
         except KeyboardInterrupt:
-            t1.join()
+            p1.join()
             print("\nUser Interrupt")
-
 
 
