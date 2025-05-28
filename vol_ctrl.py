@@ -1,5 +1,6 @@
 import time
 from utils import VolumeCommand
+import sys
 
 def range_limit(vol, min=0.0, max=1.0):
     if (vol.value < min):
@@ -54,5 +55,5 @@ def volume_handler(vol_mic, vol_media, q_volume_control):
                 
         except KeyboardInterrupt:
             print("Volume Handler Process stopped")
-            break
+            sys.exit()
 

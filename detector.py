@@ -1,23 +1,18 @@
 from faster_whisper import WhisperModel
 from utils import VolumeCommand
+import sys
 
 def word_check(sentence, target_word):
-    word_chunk = sentence.lower().replace(".", "").replace(",", "").split(' ')
-
-    for word in word_chunk:
-        if target_word == word:
-            return True
-
-    return False
+    return target_word in sentence.lower().replace(".", "").replace(",", "").split(' ')
 
 
 def transcribe_buffer(audio_buffer, model):
     # TODO find out why this doesn't like being called
-    # segments, _ = model.transcribe(audio_buffer)
-    result_text = "nope nope nope "
+    segments, _ = model.transcribe(audio_buffer, vad_filter=False)
+    result_text = ""
 
-    # for segment in segments:
-    #    result_text += segment.text
+    for segment in segments:
+        result_text += segment.text
 
     return result_text
 
@@ -33,16 +28,17 @@ def transcription_handler(name, q_transcriber, q_volume_control):
     while True:
         try:
 
-            audio_buffer_copy = q_transcriber.get()
+            audio_buffer = q_transcriber.get()
 
-            transcription = transcribe_buffer(audio_buffer_copy, model)
+            transcription = transcribe_buffer(audio_buffer, model)
 
             print(transcription)
 
-            if (word_check(transcription, name)):
+            if (word_check(transcription, name.value)):
+                print(f"NAME FOUND - issuing volume command...")
                 q_volume_control.put(VolumeCommand(0.5, 0.5))
 
         except KeyboardInterrupt:
             print("Transcriber Process stopped")
-            break
+            sys.exit()
                    

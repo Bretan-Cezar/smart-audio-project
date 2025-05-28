@@ -9,7 +9,8 @@ from audio_chunk_handler import chunk_handler
 from multiprocessing import Value, Queue, Process
 from typing import Any
 import ctypes
-from utils import VolumeCommand
+from librosa import resample
+import sys
 
 config: dict
 SR: int
@@ -100,8 +101,9 @@ if __name__ == "__main__":
         outR.get_array()[:] = buf_mixR
 
         if frames == BLOCK_SIZE:
-            audio_chunk = np.stack((buf_micL, buf_micR)) 
-            q_audio_chunks.put(audio_chunk)
+            q_audio_chunks.put(
+                np.stack((buf_micL, buf_micR))
+            )
 
 
     client.set_process_callback(process)
@@ -125,7 +127,7 @@ if __name__ == "__main__":
 
         print("JACK CLIENT STARTED, ctrl+c TO QUIT".center(get_terminal_size().columns, "="))
 
-        p1 = Process(target=chunk_handler, args=(q_audio_chunks, q_transcriber))
+        p1 = Process(target=chunk_handler, args=(BLOCK_SIZE, q_audio_chunks, q_transcriber))
         p2 = Process(target=transcription_handler, args=(NAME_SEARCH, q_transcriber, q_volume_control))
         p3 = Process(target=volume_handler, args=(GAIN_MIC, GAIN_MEDIA, q_volume_control))
 
@@ -143,4 +145,5 @@ if __name__ == "__main__":
 
             print("\nDeactivating JACK Client...")
             client.deactivate()
+            sys.exit()
 
