@@ -105,6 +105,8 @@ if __name__ == "__main__":
                 np.stack((buf_micL, buf_micR))
             )
 
+        print(q_audio_chunks)
+
 
     client.set_process_callback(process)
 
