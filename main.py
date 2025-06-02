@@ -4,7 +4,7 @@ import json
 from threading import Event
 from shutil import get_terminal_size
 from vol_ctrl import volume_handler
-from detector import transcription_handler
+from transcriber import transcription_handler
 from audio_chunk_handler import chunk_handler
 from multiprocessing import Value, Queue, Process
 from typing import Any

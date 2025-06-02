@@ -41,7 +41,7 @@ def chunk_handler(block_size, q_chunks, q_transcriber):
                                   onnx=True)
 
     print("Chunk Handler Process started")
-    audio_buffer = np.empty((2, 4*48*block_size), dtype=np.float32)
+    audio_buffer = np.empty((2, 2*48*block_size), dtype=np.float32)
     length = 0
 
     while True:
@@ -56,19 +56,21 @@ def chunk_handler(block_size, q_chunks, q_transcriber):
 
             length += chunk_length
 
-            if length >= 4*48*block_size:
+            if length >= 2*48*block_size:
 
                 audio_buffer_resampled = resample(audio_buffer, orig_sr=48000, target_sr=16000)
 
                 audio_buffer_channel_mix = ((audio_buffer_resampled[0, :] + audio_buffer_resampled[1, :])) / 4.0
 
+                audio_buffer[:, :int((0.5*length)/2)] = audio_buffer[:, int((1.5*length)/2):]
+                length = int((0.5*length)/2)
+
                 if (silero_detect_speech(model, audio_buffer_channel_mix)):
                     print("--Speech detected--")
-                    audio_buffer[:, :((2*length)//4)] = audio_buffer[:, ((2*length)//4):]
-                    length = (2*length)//4
 
                     q_transcriber.put(audio_buffer_channel_mix)
-                    print(q_transcriber.qsize())
+
+                print(q_transcriber.qsize())
 
         except KeyboardInterrupt:
             print("Chunk Handler Process stopped")
