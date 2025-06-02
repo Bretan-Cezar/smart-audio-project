@@ -105,9 +105,6 @@ if __name__ == "__main__":
                 np.stack((buf_micL, buf_micR))
             )
 
-        print(q_audio_chunks)
-
-
     client.set_process_callback(process)
 
     mediaL = client.get_port_by_name(f"{client.name}:{L_MEDIA_PORT}")

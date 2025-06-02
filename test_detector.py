@@ -15,9 +15,7 @@ if __name__ == "__main__":
         wave, sr = sf.read(f)
         wave = resample(wave.T, orig_sr=48000, target_sr=16000)
 
-    print(wave.shape)
-
-    segments, _ = model.transcribe(wave[0, :], vad_filter=True)
+    segments, _ = model.transcribe(wave[0, :], vad_filter=False)
 
     result_text = ""
 
