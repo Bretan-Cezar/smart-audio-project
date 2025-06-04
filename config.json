@@ -1,12 +1,26 @@
 {
     "clientName": "ambient-sound-mixer",
-    "leftChannelMediaPort": "scarlett:capture_1",
+    "leftChannelMediaPort": "media:capture_1",
     "leftChannelMicPort": "mic:capture_1",
-    "rightChannelMediaPort": "scarlett:capture_2",
+    "rightChannelMediaPort": "media:capture_2",
     "rightChannelMicPort": "mic:capture_2",
     "leftChannelOutPort": "system:playback_1",
     "rightChannelOutPort": "system:playback_2",
-    "mediaInputGain": 1.0,
-    "micInputGain": 0.0,
-    "nameSearch": "Foo"
+    "mediaInputGainStateDisabled": 1.0,
+    "micInputGainStateDisabled": 0.0,
+    "mediaInputGainStateEnabled": 0.4,
+    "micInputGainStateEnabled": 0.6,
+    "recordingSampleRate": 48000,
+    "transcriberSampleRate": 16000,
+    "bufferDuration": 2.0,
+    "bufferOverlapDuration": 0.5,
+    "vadModelPath": "./silero_vad.onnx",
+    "vadFilterPassDurationThreshold": 0.5,
+    "transcriberModelPath": "./vosk-model-en-us-0.22-lgraph",
+    "phraseList": [
+        "hey foo",
+        "hey caesar",
+        "yo caesar",
+        "yo foo"
+    ]
 }

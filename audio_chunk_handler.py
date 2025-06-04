@@ -1,13 +1,15 @@
 import numpy as np
 from librosa import resample
 import sys
-import torch
+from torch import tensor, float32
+from silero_vad.utils_vad import OnnxWrapper
 from math import ceil
+import json
 
-def silero_detect_chunk(model, chunk, sr: int = 16000) -> bool:
-    return model(torch.tensor(chunk, dtype=torch.float32), sr).item() >= 0.5
+def silero_detect_chunk(model, chunk, sr: int) -> bool:
+    return model(tensor(chunk, dtype=float32), sr).item() >= 0.5
 
-def silero_detect_speech(model, buffer: np.ndarray, threshold: float = 0.25, sr: int = 16000) -> bool:
+def silero_detect_speech(model, buffer: np.ndarray, threshold: float, sr: int) -> bool:
     
     CHUNK_SIZE = 512
     THRESHOLD_SAMPLES = sr * threshold
@@ -23,7 +25,7 @@ def silero_detect_speech(model, buffer: np.ndarray, threshold: float = 0.25, sr:
         if w.shape[0] != CHUNK_SIZE:
             break
 
-        if silero_detect_chunk(model, w):
+        if silero_detect_chunk(model, w, sr):
             COUNTER += 1
         else:
             COUNTER = 0
@@ -33,21 +35,35 @@ def silero_detect_speech(model, buffer: np.ndarray, threshold: float = 0.25, sr:
     
     return False
 
+def enhance(buffer) -> np.ndarray:
+    # TODO
+    return buffer
+
 
 def chunk_handler(block_size, q_chunks, q_transcriber):
-    model, _ = torch.hub.load(repo_or_dir='snakers4/silero-vad',
-                                  model='silero_vad',
-                                  force_reload=True,
-                                  onnx=True)
+    print("Chunk Handler Process started. Initializing VAD model...")
 
-    print("Chunk Handler Process started")
-    audio_buffer = np.empty((2, 2*48*block_size), dtype=np.float32)
+    with open("config.json", "rt") as cfg:
+        config = json.load(cfg)
+
+    recording_sr = int(config["recordingSampleRate"])
+    transcriber_sr = int(config["transcriberSampleRate"])
+
+    buffer_duration = float(config["bufferDuration"])
+    buffer_overlap = float(config["bufferOverlapDuration"])
+
+    model = OnnxWrapper(path=str(config["vadModelPath"]), force_onnx_cpu=True)
+
+    buffer_size = int(buffer_duration * 48 * block_size)
+
+    audio_buffer = np.empty((2, buffer_size), dtype=np.float32)
     length = 0
+
+    print("VAD Model Inintialized!")
 
     while True:
 
         try:
-
             audio_chunk = q_chunks.get()
             
             chunk_length = audio_chunk.shape[1]
@@ -56,19 +72,20 @@ def chunk_handler(block_size, q_chunks, q_transcriber):
 
             length += chunk_length
 
-            if length >= 2*48*block_size:
+            if length == buffer_size:
 
-                audio_buffer_resampled = resample(audio_buffer, orig_sr=48000, target_sr=16000)
+                audio_buffer_resampled = resample(audio_buffer, orig_sr=recording_sr, target_sr=transcriber_sr)
 
-                audio_buffer_channel_mix = ((audio_buffer_resampled[0, :] + audio_buffer_resampled[1, :])) / 4.0
+                audio_buffer_channel_mix = enhance((audio_buffer_resampled[0, :] + audio_buffer_resampled[1, :]) / 2.0)
 
-                audio_buffer[:, :int((0.5*length)/2)] = audio_buffer[:, int((1.5*length)/2):]
-                length = int((0.5*length)/2)
+                length = int((buffer_overlap*length)/buffer_duration)
 
-                if (silero_detect_speech(model, audio_buffer_channel_mix)):
+                audio_buffer[:, :length] = audio_buffer[:, -length:]
+
+                if (silero_detect_speech(model, audio_buffer_channel_mix, float(config["vadFilterPassDurationThreshold"]), transcriber_sr)):
                     print("--Speech detected--")
 
-                    q_transcriber.put(audio_buffer_channel_mix)
+                    q_transcriber.put(audio_buffer_channel_mix.astype(np.float16))
 
                 print(q_transcriber.qsize())
 

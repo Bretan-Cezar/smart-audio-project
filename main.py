@@ -9,7 +9,6 @@ from audio_chunk_handler import chunk_handler
 from multiprocessing import Value, Queue, Process
 from typing import Any
 import ctypes
-from librosa import resample
 import sys
 
 config: dict
@@ -17,7 +16,6 @@ SR: int
 BLOCK_SIZE: int
 GAIN_MEDIA: Any
 GAIN_MIC: Any
-
 
 if __name__ == "__main__":
     
@@ -39,9 +37,9 @@ if __name__ == "__main__":
     R_MIC_PORT = config["rightChannelMicPort"]
     L_OUTPORT = config["leftChannelOutPort"]
     R_OUTPORT = config["rightChannelOutPort"]
-    GAIN_MEDIA = Value(ctypes.c_float, float(config["mediaInputGain"]), lock=True)
-    GAIN_MIC = Value(ctypes.c_float, float(config["micInputGain"]), lock=True)
-    NAME_SEARCH = Value(ctypes.c_wchar_p, str(config["nameSearch"]).lower())
+    GAIN_MEDIA = Value(ctypes.c_float, float(config["mediaInputGainStateDisabled"]), lock=True)
+    GAIN_MIC = Value(ctypes.c_float, float(config["micInputGainStateDisabled"]), lock=True)
+    PHRASE_LIST = list(config["phraseList"])
 
     inport_pairs = []
 
@@ -127,7 +125,7 @@ if __name__ == "__main__":
         print("JACK CLIENT STARTED, ctrl+c TO QUIT".center(get_terminal_size().columns, "="))
 
         p1 = Process(target=chunk_handler, args=(BLOCK_SIZE, q_audio_chunks, q_transcriber))
-        p2 = Process(target=transcription_handler, args=(NAME_SEARCH, q_transcriber, q_volume_control))
+        p2 = Process(target=transcription_handler, args=(PHRASE_LIST, q_transcriber, q_volume_control))
         p3 = Process(target=volume_handler, args=(GAIN_MIC, GAIN_MEDIA, q_volume_control))
 
         try:
@@ -143,6 +141,7 @@ if __name__ == "__main__":
             p3.join()
 
             print("\nDeactivating JACK Client...")
+
             client.deactivate()
             sys.exit()
 

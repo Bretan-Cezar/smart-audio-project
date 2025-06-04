@@ -23,14 +23,14 @@ def callback(indata, frames, time, status):
         print(status, file=sys.stderr)
 
     indata = buf_to_float(indata, dtype=np.float16)
-    # indata = resample(indata, orig_sr=48000, target_sr=16000)
+
     q.put(indata.tobytes())
 
 try:
         
     model = Model(lang="en-us")
 
-    with sd.RawInputStream(samplerate=16000, blocksize = 8000, device=0,
+    with sd.RawInputStream(samplerate=48000, blocksize = 8000, device=1,
             dtype="int16", channels=1, callback=callback):
 
         print("Press Ctrl+C to stop the recording")
@@ -43,6 +43,7 @@ try:
 
             if rec.AcceptWaveform(data):
                 print(rec.Result())
+
             else:
                 print(rec.PartialResult())
 
