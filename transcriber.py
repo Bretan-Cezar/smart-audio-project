@@ -31,7 +31,7 @@ def transcription_handler(phrase_list, q_transcriber, q_volume_control):
     target_media_gain_disabled: float = float(config["mediaInputGainStateDisabled"])
     target_mic_gain_disabled: float = float(config["micInputGainStateDisabled"])
 
-    pipeline = KaldiRecognizer(Model(model_path=str(config["transcriberModelPath"])), 16000, json.dumps(phrase_list))
+    pipeline = KaldiRecognizer(Model(model_path=str(config["transcriberModelPath"])), config["transcriberSampleRate"], json.dumps(phrase_list))
 
     print("Transcriber Model Initialized!")
 

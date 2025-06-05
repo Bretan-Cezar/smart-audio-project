@@ -10,8 +10,8 @@ aplay -l                                                           # get audio o
 jackd -d alsa -d hw:0,0 -o2                                        # replace card number if necessary
 
 arecord -l                                                         # get audio input card numbers
-alsa_in -j mic -d hw:4,0 -r 48000 -c2                              # replace card number if necessary
-alsa_in -j scarlett -d hw:3,0 -r 48000 -c6                         # replace card number if necessary
+alsa_in -j mic -d dmic_sv -r 48000 -c2                              # replace card number if necessary
+alsa_in -j media -d hw:3,0 -r 48000 -c6                         # replace card number if necessary
 
 # Connections done upon starting python mixer, can also be done manually
 # jack_connect mic:capture_1 system:playback_1 
