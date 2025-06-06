@@ -64,6 +64,8 @@ def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control):
     audio_buffer = np.empty((2, buffer_size), dtype=np.float32)
     length = 0
 
+    enabled = False
+
     print("VAD Model Inintialized!")
 
     time_stamp = time.time()
@@ -95,11 +97,13 @@ def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control):
                     q_transcriber.put(audio_buffer_channel_mix.astype(np.float16))
                     
                     time_stamp = time.time()
+                    enabled = True
                 else:
                     curr_time = time.time()
-                    if (curr_time - time_stamp >= 10.0):
+                    if (curr_time - time_stamp >= 10.0 and enabled == True):
                         print("--SAM is turned off--")
-                        q_volume_control.put(target_mic_gain_disabled, target_media_gain_disabled)
+                        q_volume_control.put(VolumeCommand(target_mic_gain_disabled, target_media_gain_disabled))
+                        enabled = False
 
                 print(q_transcriber.qsize())
 
