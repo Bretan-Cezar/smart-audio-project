@@ -5,6 +5,8 @@ from torch import tensor, float32
 from silero_vad.utils_vad import OnnxWrapper
 from math import ceil
 import json
+import time
+from utils import VolumeCommand
 
 def silero_detect_chunk(model, chunk, sr: int) -> bool:
     return model(tensor(chunk, dtype=float32), sr).item() >= 0.5
@@ -40,7 +42,7 @@ def enhance(buffer) -> np.ndarray:
     return buffer
 
 
-def chunk_handler(block_size, q_chunks, q_transcriber):
+def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control):
     print("Chunk Handler Process started. Initializing VAD model...")
 
     with open("config.json", "rt") as cfg:
@@ -52,6 +54,9 @@ def chunk_handler(block_size, q_chunks, q_transcriber):
     buffer_duration = float(config["bufferDuration"])
     buffer_overlap = float(config["bufferOverlapDuration"])
 
+    target_media_gain_disabled: float = float(config["mediaInputGainStateDisabled"])
+    target_mic_gain_disabled: float = float(config["micInputGainStateDisabled"])
+
     model = OnnxWrapper(path=str(config["vadModelPath"]), force_onnx_cpu=True)
 
     buffer_size = int(buffer_duration * 48 * block_size)
@@ -60,6 +65,8 @@ def chunk_handler(block_size, q_chunks, q_transcriber):
     length = 0
 
     print("VAD Model Inintialized!")
+
+    time_stamp = time.time()
 
     while True:
 
@@ -86,6 +93,13 @@ def chunk_handler(block_size, q_chunks, q_transcriber):
                     print("--Speech detected--")
 
                     q_transcriber.put(audio_buffer_channel_mix.astype(np.float16))
+                    
+                    time_stamp = time.time()
+                else:
+                    curr_time = time.time()
+                    if (curr_time - time_stamp >= 10.0):
+                        print("--SAM is turned off--")
+                        q_volume_control.put(target_mic_gain_disabled, target_media_gain_disabled)
 
                 print(q_transcriber.qsize())
 
