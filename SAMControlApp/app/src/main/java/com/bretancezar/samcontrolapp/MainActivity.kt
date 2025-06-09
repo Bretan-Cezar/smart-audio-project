@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import com.bretancezar.samcontrolapp.navigation.AppNavigation
 import com.bretancezar.samcontrolapp.ui.theme.SAMControlAppTheme
 
@@ -24,5 +25,5 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainApplication() {
 
-    AppNavigation()
+    AppNavigation(LocalContext.current)
 }
