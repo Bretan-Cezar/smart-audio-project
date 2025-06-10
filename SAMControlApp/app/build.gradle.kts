@@ -7,6 +7,7 @@ plugins {
 android {
     namespace = "com.bretancezar.samcontrolapp"
     compileSdk = 35
+    buildToolsVersion = "35"
 
     defaultConfig {
         applicationId = "com.bretancezar.samcontrolapp"

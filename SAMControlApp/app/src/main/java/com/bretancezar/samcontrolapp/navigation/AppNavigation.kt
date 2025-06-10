@@ -1,72 +1,97 @@
 package com.bretancezar.samcontrolapp.navigation
 
+import android.annotation.SuppressLint
 import android.content.Context
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.compose.material.BottomNavigation
-import androidx.compose.material.BottomNavigationDefaults
-import androidx.compose.material.BottomNavigationItem
-import androidx.compose.material.Text
-import androidx.compose.material3.Icon
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bretancezar.samcontrolapp.service.SmartAmbienceService
 import com.bretancezar.samcontrolapp.ui.screen.DeviceScreen
 import com.bretancezar.samcontrolapp.ui.screen.SmartAmbienceScreen
 import com.bretancezar.samcontrolapp.ui.screen.SoundScreen
-import com.bretancezar.samcontrolapp.utils.ScreenRouteName
+import com.bretancezar.samcontrolapp.utils.Screens
 import com.bretancezar.samcontrolapp.viewmodel.NavigationViewModel
 import com.bretancezar.samcontrolapp.viewmodel.SmartAmbienceViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun AppNavigation(
     applicationContext: Context
 ) {
 
     val navController = rememberNavController()
-    val navigationViewModel = viewModel {  NavigationViewModel(ScreenRouteName.SMART_AMBIENCE) }
+    val startDestination = Screens.SMART_AMBIENCE
+    val navigationViewModel = viewModel {  NavigationViewModel(startDestination, navController) }
     val smartAmbienceViewModel = viewModel { SmartAmbienceViewModel(SmartAmbienceService(applicationContext)) }
 
-    NavHost(navController = navController, startDestination = ScreenRouteName.SMART_AMBIENCE.routeName) {
+    Scaffold(
+        bottomBar = { BottomNavBar(navigationViewModel) },
+        topBar = {
+            TopAppBar(
+                title = { Text("SAM Control App") }
+            )
+        }
+    ) {
 
-        composable(
-            route = ScreenRouteName.SMART_AMBIENCE.routeName
+        NavHost(
+            navController = navController,
+            startDestination = startDestination.routeName
         ) {
-            SmartAmbienceScreen()
+
+            composable(
+                route = Screens.SMART_AMBIENCE.routeName
+            ) {
+                SmartAmbienceScreen()
+            }
+
+            composable(
+                route = Screens.SOUND.routeName
+            ) {
+                SoundScreen()
+            }
+
+            composable(
+                route = Screens.DEVICE.routeName
+            ) {
+                DeviceScreen()
+            }
         }
 
-        composable(
-            route = ScreenRouteName.SOUND.routeName
-        ) {
-            SoundScreen()
-        }
-
-        composable(
-            route = ScreenRouteName.DEVICE.routeName
-        ) {
-            DeviceScreen()
-        }
     }
-
 }
 
 @Composable
-fun BottomNavigation(viewModel: NavigationViewModel) {
+fun BottomNavBar(viewModel: NavigationViewModel) {
 
-    val screenList: List<ScreenRouteName> = viewModel.screenList
+    val screenList: List<Screens> = viewModel.screenList
     val selectedScreen by viewModel.currentScreen.collectAsState()
 
-    BottomNavigation(
-        windowInsets = BottomNavigationDefaults.windowInsets
+    NavigationBar(
+        windowInsets = NavigationBarDefaults.windowInsets
     ) {
         screenList.forEachIndexed { _, screen ->
-            BottomNavigationItem(
-                icon = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
+            NavigationBarItem(
+                icon = {
+                    Icon(painter = painterResource(screen.icon), contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.White)
+                },
                 label = { Text(screen.displayName) },
                 selected = selectedScreen == screen,
                 onClick = { viewModel.setCurrentScreen(screen) }

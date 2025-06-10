@@ -1,22 +1,24 @@
 package com.bretancezar.samcontrolapp.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
-import com.bretancezar.samcontrolapp.utils.ScreenRouteName
+import androidx.navigation.NavController
+import com.bretancezar.samcontrolapp.utils.Screens
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class NavigationViewModel(
-    startDestination: ScreenRouteName
+    startDestination: Screens,
+    private val navController: NavController
 ): ViewModel() {
 
-    val screenList = ScreenRouteName.entries.toList()
+    val screenList = Screens.entries.toList()
+    private var _currentScreen: MutableStateFlow<Screens> = MutableStateFlow(startDestination)
+    val currentScreen: StateFlow<Screens> = _currentScreen.asStateFlow()
 
-    private var _currentScreen: MutableStateFlow<ScreenRouteName> = MutableStateFlow(startDestination)
-    val currentScreen: StateFlow<ScreenRouteName> = _currentScreen.asStateFlow()
-
-    fun setCurrentScreen(screen: ScreenRouteName) {
-
+    fun setCurrentScreen(screen: Screens) {
+        navController.navigate(screen.routeName)
         _currentScreen.value = screen
     }
 }
