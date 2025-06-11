@@ -1,0 +1,21 @@
+sudo apt-get install pulseaudio bluez pulseaudio-module-bluetooth
+
+Append Enable=Source,Sink,Media,Socket to /etc/bluetooth/input.conf
+Append resample-method=trivial to /etc/bluetooth/daemon.conf
+Append Class=0x00041C to /etc/bluetooth/main.conf
+
+sudo reboot
+
+bluetoothctl
+
+power on
+agent on
+default-agent
+scan on
+pair XX:XX:XX:XX:XX:XX
+connect XX:XX:XX:XX:XX:XX
+trust XX:XX:XX:XX:XX:XX
+scan off
+exit
+
+
