@@ -59,7 +59,7 @@ fun AppNavigation(
             composable(
                 route = Screens.SMART_AMBIENCE.routeName
             ) {
-                SmartAmbienceScreen()
+                SmartAmbienceScreen(smartAmbienceViewModel)
             }
 
             composable(
