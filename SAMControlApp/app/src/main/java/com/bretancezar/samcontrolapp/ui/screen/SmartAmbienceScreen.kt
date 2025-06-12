@@ -1,26 +1,31 @@
 package com.bretancezar.samcontrolapp.ui.screen
 
-import android.graphics.Color
+import com.bretancezar.samcontrolapp.ui.theme.Red
 import com.bretancezar.samcontrolapp.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,7 +46,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.bretancezar.samcontrolapp.ui.theme.Green
 import com.bretancezar.samcontrolapp.utils.SmartAmbienceMode
 import com.bretancezar.samcontrolapp.viewmodel.SmartAmbienceViewModel
@@ -55,7 +63,8 @@ fun SmartAmbienceScreen(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(10.dp, 100.dp, 10.dp, 10.dp),
+            .padding(10.dp, 100.dp, 10.dp, 130.dp)
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(40.dp)
     ) {
@@ -152,20 +161,36 @@ fun PhrasesCard(
     val phrasesList by viewModel.phraseList.collectAsState()
 
     Column (
+        modifier = Modifier
+            .border(
+                BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground),
+                shape = RoundedCornerShape(16.dp)
 
+            )
+            .padding(10.dp),
+        verticalArrangement = Arrangement.Top,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("Response Activation Phrases")
 
         Row (
             modifier = Modifier
                 .height(60.dp)
+                .fillMaxWidth()
+                .padding(10.dp, 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             TextField(
                 value = fieldText,
                 onValueChange = { fieldText = it },
+                isError = fieldText == "",
                 singleLine = true,
+                textStyle = TextStyle (
+                    fontSize = 16.sp
+                ),
                 modifier = Modifier
-                    .fillMaxWidth(fraction = 0.80f)
+                    .fillMaxWidth(fraction = 0.85f)
                     .horizontalScroll(rememberScrollState())
                     .background(MaterialTheme.colorScheme.background),
                 placeholder = {
@@ -178,11 +203,13 @@ fun PhrasesCard(
 
             Button(
                 onClick = {
-                    viewModel.addPhrase(fieldText)
+                    if (fieldText != "")
+                        viewModel.addPhrase(fieldText)
                 },
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.size(42.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(Green),
+                contentPadding = PaddingValues(0.dp)
 
             ) {
                 Image(
@@ -193,12 +220,31 @@ fun PhrasesCard(
             }
         }
         Column (
-
+            modifier = Modifier.padding(10.dp),
         ) {
             phrasesList.forEach {
-                Text (
-                    it
-                )
+                Row (
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth().padding(0.dp, 5.dp)
+                ) {
+                    Text(
+                        it,
+                        Modifier.padding(10.dp),
+                        )
+                    Button(
+                        onClick = {viewModel.deletePhrase(it)},
+                        shape = CircleShape,
+                        colors = ButtonDefaults.buttonColors(Red),
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.padding(0.dp).size(42.dp)
+                    ) {
+                        Image(painterResource(
+                            R.drawable.remove_24px),
+                            contentDescription = null
+                        )
+                    }
+                }
             }
         }
     }

@@ -31,10 +31,13 @@ class SmartAmbienceViewModel(
 
     fun addPhrase(phrase: String) {
 
-        val copy = _phraseList.value.toMutableList()
+        val copy = _phraseList.value.toMutableSet()
         copy.add(phrase)
 
         _phraseList.value = copy.toList()
     }
 
+    fun deletePhrase(phrase: String) {
+        _phraseList.value = _phraseList.value.filter { it != phrase }
+    }
 }
