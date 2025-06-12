@@ -42,12 +42,12 @@ fun AppNavigation(
     applicationContext: Context
 ) {
     val navController = rememberNavController()
+
     val startDestination = Screens.SMART_AMBIENCE
     val navigationViewModel = viewModel {  NavigationViewModel(startDestination, navController) }
+
     val smartAmbienceService = SmartAmbienceService(applicationContext)
     val smartAmbienceViewModel = viewModel { SmartAmbienceViewModel(smartAmbienceService) }
-
-    Log.i("BT", smartAmbienceService.checkConnected().toString())
 
     Scaffold(
         bottomBar = { BottomNavBar(navigationViewModel) },
