@@ -42,7 +42,7 @@ def enhance(buffer) -> np.ndarray:
     return buffer
 
 
-def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control):
+def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control, RELOAD_SIGNAL):
     print("Chunk Handler Process started. Initializing VAD model...")
 
     with open("config.json", "rt") as cfg:
@@ -70,7 +70,7 @@ def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control):
 
     time_stamp = time.time()
 
-    while True:
+    while not RELOAD_SIGNAL.value:
 
         try:
             audio_chunk = q_chunks.get()
@@ -98,9 +98,13 @@ def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control):
                     
                     time_stamp = time.time()
                     enabled = True
+
                 else:
+
                     curr_time = time.time()
+
                     if (curr_time - time_stamp >= 10.0 and enabled == True):
+
                         print("--SAM is turned off--")
                         q_volume_control.put(VolumeCommand(target_mic_gain_disabled, target_media_gain_disabled))
                         enabled = False
@@ -108,6 +112,8 @@ def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control):
                 print(q_transcriber.qsize())
 
         except KeyboardInterrupt:
-            print("Chunk Handler Process stopped")
-            sys.exit()           
 
+            print("Chunk Handler Process stopped")
+            sys.exit(15)           
+
+    sys.exit(0)

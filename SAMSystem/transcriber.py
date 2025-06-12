@@ -18,7 +18,7 @@ def transcribe_buffer(buffer, pipeline):
         return res["partial"]
 
 
-def transcription_handler(phrase_list, q_transcriber, q_volume_control):
+def transcription_handler(q_transcriber, q_volume_control, RELOAD_SIGNAL):
 
     print("Transcriber Process started - Initializing model...")
     
@@ -28,16 +28,13 @@ def transcription_handler(phrase_list, q_transcriber, q_volume_control):
     target_media_gain_enabled: float = float(config["mediaInputGainStateEnabled"])
     target_mic_gain_enabled: float = float(config["micInputGainStateEnabled"])
 
-    target_media_gain_disabled: float = float(config["mediaInputGainStateDisabled"])
-    target_mic_gain_disabled: float = float(config["micInputGainStateDisabled"])
+    phrase_list = list(config["phraseList"])
 
     pipeline = KaldiRecognizer(Model(model_path=str(config["transcriberModelPath"])), config["transcriberSampleRate"], json.dumps(phrase_list))
 
     print("Transcriber Model Initialized!")
 
-    # TODO Use a timestamp to mark when the SAM was active, maybe after 10 secs of non-detection, turn SAM back off
-
-    while True:
+    while not RELOAD_SIGNAL.value:
 
         try:
 
@@ -55,4 +52,8 @@ def transcription_handler(phrase_list, q_transcriber, q_volume_control):
         except KeyboardInterrupt:
 
             print("Transcriber Process stopped")
-            sys.exit()
+            sys.exit(15)
+
+    sys.exit(0)
+
+

@@ -15,14 +15,14 @@ def volume_step(vol, step):
     range_limit(vol)
 
 
-def volume_handler(GAIN_MIC, GAIN_MEDIA, q_volume_control):
+def volume_handler(GAIN_MIC, GAIN_MEDIA, q_volume_control, RELOAD_SIGNAL):
 
     print("Volume Handler Process started")
 
     step_vol_mic: float
     step_vol_media: float
 
-    while True:
+    while not RELOAD_SIGNAL.value:
 
         try:
 
@@ -56,5 +56,7 @@ def volume_handler(GAIN_MIC, GAIN_MEDIA, q_volume_control):
                 
         except KeyboardInterrupt:
             print("Volume Handler Process stopped")
-            sys.exit()
+            sys.exit(15)
+
+    sys.exit(0)
 
