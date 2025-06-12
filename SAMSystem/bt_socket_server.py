@@ -42,42 +42,32 @@ def listen_for_bluetooth_connection(server_socket: socket.socket, channel: int):
 
 
 def accept_bluetooth_connection(server_socket: socket.socket) -> socket.socket | None:
-    client_socket: socket.socket | None
+    new_socket: socket.socket | None
 
     try:
 
-        client_socket, client_info = server_socket.accept()
+        new_socket, client_info = server_socket.accept()
         print("Accepted bluetooth connection from %s", client_info)
 
     except (Exception, SystemExit, KeyboardInterrupt) as e:
 
-        client_socket = None
+        new_socket = None
         print(f"Failed to accept bluetooth connection: {e.with_traceback(None)}")
 
-    return client_socket
+    return new_socket
 
 
 def recv_data(server_socket: socket.socket) -> bytes | None:
     try:
-        while True:
-            data = server_socket.recv(1024)
+        data = server_socket.recv(4096)
 
-            if not data:
-                print("W: Empty Buffer Received")
+        if not data:
+            print("W: Empty Buffer Received")
 
-            # remove the length bytes from the front of buffer
-            # leave any remaining bytes in the buffer!
-            data_size_str, ignored, data = data.partition(b':')
+        # Trim NULL terminators
+        data, _, _ = data.partition(b'\x00')
 
-            data_size = int(data_size_str)
-
-            if len(data) < data_size:
-                print("E: Corrupted Buffer Received")
-
-            else:
-                break
-
-        print(f"{str(len(data))} bytes received successfully over bluetooth connection")
+        print(f"{str(len(data))} bytes received over bluetooth connection")
 
         return data
 
@@ -87,13 +77,13 @@ def recv_data(server_socket: socket.socket) -> bytes | None:
         return None
 
 
-def send_data(client_socket: socket.socket, data: bytes):
+def send_data(server_socket: socket.socket, data: bytes):
     sent_size: int = 0
 
     try:
 
         while True:
-            sent_size += client_socket.send(data)
+            sent_size += server_socket.send(data)
 
             if sent_size < len(data):
                 print("E: Buffer partially sent")
@@ -119,16 +109,20 @@ def socket_server(GAIN_MEDIA, GAIN_MIC, RELOAD_SIGNAL):
     if server_socket != None:
         listen_for_bluetooth_connection(server_socket, int(config["bluetoothSocketChannel"]))
 
-        client_socket: socket.socket | None = accept_bluetooth_connection(server_socket)
+        server_socket = accept_bluetooth_connection(server_socket)
 
-        if client_socket != None:
+        if server_socket != None:
             current_modifiable_settings = {
                 "smartAmbienceMode": str(config["smartAmbienceMode"]),
                 "micInputGainStateEnabled": float(config["micInputGainStateEnabled"]),
                 "phraseList": list(config["phraseList"])
             }
 
-            send_data(client_socket, bytes(json.dumps(current_modifiable_settings), encoding='utf-8'))
+            data = bytes(json.dumps(current_modifiable_settings), encoding='utf-8')
+            
+            print(len(data))
+
+            send_data(server_socket, data)
 
             while True:
 
@@ -144,7 +138,7 @@ def socket_server(GAIN_MEDIA, GAIN_MIC, RELOAD_SIGNAL):
                             config[k] = v
 
                         with open("config.json", "wt") as cfg:
-                            json.dump(config, cfg)
+                            json.dump(config, cfg, indent=4)
                                         
                         RELOAD_SIGNAL.value = True
 
@@ -155,7 +149,6 @@ def socket_server(GAIN_MEDIA, GAIN_MIC, RELOAD_SIGNAL):
                 except KeyboardInterrupt:
 
                     server_socket.close()
-                    client_socket.close()
 
                     print("Socket Server stopped")
                     sys.exit(15)
