@@ -3,10 +3,8 @@ package com.bretancezar.samcontrolapp.navigation
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
-import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.rememberScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -33,6 +31,7 @@ import com.bretancezar.samcontrolapp.ui.screen.SoundScreen
 import com.bretancezar.samcontrolapp.utils.Screens
 import com.bretancezar.samcontrolapp.viewmodel.NavigationViewModel
 import com.bretancezar.samcontrolapp.viewmodel.SmartAmbienceViewModel
+
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 @OptIn(ExperimentalMaterial3Api::class)

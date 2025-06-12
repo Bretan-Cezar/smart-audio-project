@@ -1,8 +1,6 @@
 package com.bretancezar.samcontrolapp.viewmodel
 
 import androidx.annotation.RequiresPermission
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bretancezar.samcontrolapp.service.SmartAmbienceService
@@ -19,11 +17,11 @@ class SmartAmbienceViewModel(
 
     val modeList: List<SmartAmbienceMode> = SmartAmbienceMode.entries.toList()
 
-    private var _selectedMode: MutableStateFlow<SmartAmbienceMode?> = MutableStateFlow(null)
+    private var _selectedMode: MutableStateFlow<SmartAmbienceMode?> = MutableStateFlow(smartAmbienceService.getCurrentMode())
     var selectedMode: StateFlow<SmartAmbienceMode?> = _selectedMode.asStateFlow()
 
     private var _phraseList: MutableStateFlow<List<String>> =
-        MutableStateFlow(listOf())
+        MutableStateFlow(smartAmbienceService.getCurrentPhraseList())
 
     var phraseList: StateFlow<List<String>> =
         _phraseList.asStateFlow()

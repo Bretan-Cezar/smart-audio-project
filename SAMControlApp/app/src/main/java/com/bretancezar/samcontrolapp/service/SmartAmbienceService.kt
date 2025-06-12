@@ -8,32 +8,32 @@ import android.content.Context
 import androidx.annotation.RequiresPermission
 import com.bretancezar.samcontrolapp.utils.SmartAmbienceMode
 import kotlinx.serialization.json.Json
-import java.util.UUID
 
 class SmartAmbienceService(
     private val _applicationContext: Context
 ) {
     private var _bluetooth: BluetoothManager = _applicationContext.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     private var _targetAddress = "DC:A6:32:70:23:BB"
-    private var _uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
     private var _socket: BluetoothSocket? = null
     private var _device: BluetoothDevice? = null
     private var _channelNo: Int = 1
-    private var _phraseList: List<String>
-    private var _micInputGainStateEnabled: Float
-    private var _smartAmbienceMode: SmartAmbienceMode
+    private var phraseList: List<String>
+    private var micInputGainStateEnabled: Float
+    private var smartAmbienceMode: SmartAmbienceMode
 
     init {
         _device = getDevice()
+
         connectDevice()
-        val currentSettings = getCurrentSettings()
+
+        val currentSettings = fetchCurrentSettings()
 
         if (currentSettings == null)
             throw ServiceException()
 
-        _phraseList = currentSettings.phraseList
-        _micInputGainStateEnabled = currentSettings.micInputGainStateEnabled
-        _smartAmbienceMode = SmartAmbienceMode.entries.find { it.internalName == currentSettings.smartAmbienceMode }!!
+        phraseList = currentSettings.phraseList
+        micInputGainStateEnabled = currentSettings.micInputGainStateEnabled
+        smartAmbienceMode = SmartAmbienceMode.entries.find { it.internalName == currentSettings.smartAmbienceMode }!!
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -55,18 +55,27 @@ class SmartAmbienceService(
 
         _socket = (createSocket.invoke(_device, _channelNo)) as BluetoothSocket
 
-        _socket?.connect()
+        if (_socket == null) {
+            throw ServiceException()
+        }
+
+        _socket!!.connect()
+
+        while (!_socket!!.isConnected) {}
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun getCurrentSettings(): ModifiableSettingsDTO? {
+    private fun fetchCurrentSettings(): ModifiableSettingsDTO? {
         val fd = _socket?.inputStream
 
-        val data: ByteArray? = fd?.readBytes()
+        var data = ByteArray(4096)
+        fd?.read(data)
 
-        if (data != null) {
+        // At least the chars {}": should be present
+        if (data.toSet().size >= 4) {
+            data = data.copyOfRange(0, data.indexOfFirst { it == 0.toByte() })
 
-            return Json.decodeFromString<ModifiableSettingsDTO>(data.toString())
+            return Json.decodeFromString<ModifiableSettingsDTO>(data.toString(Charsets.UTF_8))
         }
 
         return null
@@ -76,25 +85,37 @@ class SmartAmbienceService(
     fun setPhraseList(phraseList: List<String>) {
         val fd = _socket?.outputStream
 
-        val newSettings = ModifiableSettingsDTO(_smartAmbienceMode.internalName, phraseList, _micInputGainStateEnabled)
+        val newSettings = ModifiableSettingsDTO(smartAmbienceMode.internalName, phraseList, micInputGainStateEnabled)
 
-        val data = Json.encodeToString(newSettings).toByteArray(Charsets.UTF_8)
+        val data = Json.encodeToString(newSettings).toByteArray(Charsets.UTF_8).copyOf(4096)
 
         fd?.write(data)
 
-        _phraseList = phraseList
+        this.phraseList = phraseList
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun setMode(mode: SmartAmbienceMode) {
+    fun setMode(smartAmbienceMode: SmartAmbienceMode) {
         val fd = _socket?.outputStream
 
-        val newSettings = ModifiableSettingsDTO(mode.internalName, _phraseList, _micInputGainStateEnabled)
+        val newSettings = ModifiableSettingsDTO(smartAmbienceMode.internalName, phraseList, micInputGainStateEnabled)
 
-        val data = Json.encodeToString(newSettings).toByteArray(Charsets.UTF_8)
+        val data = Json.encodeToString(newSettings).toByteArray(Charsets.UTF_8).copyOf(4096)
 
         fd?.write(data)
 
-        _smartAmbienceMode = mode
+        this.smartAmbienceMode = smartAmbienceMode
+    }
+
+    fun getCurrentPhraseList(): List<String> {
+        return phraseList
+    }
+
+    fun getCurrentMode(): SmartAmbienceMode {
+        return smartAmbienceMode
+    }
+
+    fun getCurrentMicGain(): Float {
+        return micInputGainStateEnabled
     }
 }
