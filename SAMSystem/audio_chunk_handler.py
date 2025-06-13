@@ -6,6 +6,7 @@ from silero_vad.utils_vad import OnnxWrapper
 from math import ceil
 import json
 import time
+from queue import ShutDown
 from utils import VolumeCommand
 
 def silero_detect_chunk(model, chunk, sr: int) -> bool:
@@ -42,7 +43,7 @@ def enhance(buffer) -> np.ndarray:
     return buffer
 
 
-def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control, RELOAD_SIGNAL):
+def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control):
     print("Chunk Handler Process started. Initializing VAD model...")
 
     with open("config.json", "rt") as cfg:
@@ -70,11 +71,15 @@ def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control, RELOAD_
 
     time_stamp = time.time()
 
-    while not RELOAD_SIGNAL.value:
+    while True:
 
         try:
-            audio_chunk = q_chunks.get()
-            
+
+            try:
+                audio_chunk = q_chunks.get()
+            except ShutDown:
+                break
+
             chunk_length = audio_chunk.shape[1]
 
             audio_buffer[:, length:length+chunk_length] = audio_chunk[:, :]
@@ -94,7 +99,8 @@ def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control, RELOAD_
                 if (silero_detect_speech(model, audio_buffer_channel_mix, float(config["vadFilterPassDurationThreshold"]), transcriber_sr)):
                     print("--Speech detected--")
 
-                    q_transcriber.put(audio_buffer_channel_mix.astype(np.float16))
+                    if not enabled:
+                        q_transcriber.put(audio_buffer_channel_mix.astype(np.float16))
                     
                     time_stamp = time.time()
                     enabled = True
@@ -103,7 +109,7 @@ def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control, RELOAD_
 
                     curr_time = time.time()
 
-                    if (curr_time - time_stamp >= 10.0 and enabled == True):
+                    if (curr_time - time_stamp >= 10.0 and enabled):
 
                         print("--SAM is turned off--")
                         q_volume_control.put(VolumeCommand(target_mic_gain_disabled, target_media_gain_disabled))
@@ -113,7 +119,8 @@ def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control, RELOAD_
 
         except KeyboardInterrupt:
 
-            print("Chunk Handler Process stopped")
+            print("Chunk Handler Process exiting status 15...")
             sys.exit(15)           
 
+    print("Chunk Handler Process exiting status 0...")
     sys.exit(0)

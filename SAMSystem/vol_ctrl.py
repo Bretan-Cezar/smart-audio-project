@@ -2,6 +2,7 @@ import time
 from utils import VolumeCommand
 import sys
 from math import isclose
+from queue import ShutDown
 
 def range_limit(vol, min=0.0, max=1.0):
     if (vol.value < min):
@@ -22,11 +23,14 @@ def volume_handler(GAIN_MIC, GAIN_MEDIA, q_volume_control, RELOAD_SIGNAL):
     step_vol_mic: float
     step_vol_media: float
 
-    while not RELOAD_SIGNAL.value:
+    while True:
 
         try:
 
-            volume_targets: VolumeCommand = q_volume_control.get() 
+            try:
+                volume_targets: VolumeCommand = q_volume_control.get() 
+            except ShutDown:
+                break
 
             print(f"Volume Handler received VolumeCommand[ GAIN_MEDIA_TARGET={volume_targets.GAIN_MEDIA_TARGET} ; GAIN_MIC_TARGET={volume_targets.GAIN_MIC_TARGET} ]\nAdjusting Volume...")
 
@@ -55,8 +59,9 @@ def volume_handler(GAIN_MIC, GAIN_MEDIA, q_volume_control, RELOAD_SIGNAL):
                 time.sleep(0.1)
                 
         except KeyboardInterrupt:
-            print("Volume Handler Process stopped")
+            print("Volume Handler Process exiting status 15...")
             sys.exit(15)
 
+    print("Volume Handler Process exiting status 0...")
     sys.exit(0)
 

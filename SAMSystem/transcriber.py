@@ -2,6 +2,7 @@ import numpy as np
 from utils import VolumeCommand
 import sys
 from vosk import Model, KaldiRecognizer
+from queue import ShutDown
 import json
 
 def word_check(detection, phrase_list):
@@ -34,11 +35,14 @@ def transcription_handler(q_transcriber, q_volume_control, RELOAD_SIGNAL):
 
     print("Transcriber Model Initialized!")
 
-    while not RELOAD_SIGNAL.value:
+    while True:
 
         try:
 
-            audio_buffer = q_transcriber.get().tobytes()
+            try:
+                audio_buffer = q_transcriber.get().tobytes()
+            except ShutDown:
+                break
 
             transcription = transcribe_buffer(audio_buffer, pipeline)
 
@@ -51,9 +55,10 @@ def transcription_handler(q_transcriber, q_volume_control, RELOAD_SIGNAL):
 
         except KeyboardInterrupt:
 
-            print("Transcriber Process stopped")
+            print("Transcriber Process exiting status 15...")
             sys.exit(15)
 
+    print("Transcriber Process exiting status 0...")
     sys.exit(0)
 
 

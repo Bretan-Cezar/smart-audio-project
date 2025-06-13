@@ -8,6 +8,7 @@ from vol_ctrl import volume_handler
 from transcriber import transcription_handler
 from audio_chunk_handler import chunk_handler
 from multiprocessing import Value, Queue, Process
+from queue import ShutDown
 from typing import Any
 import ctypes
 import sys
@@ -41,7 +42,6 @@ if __name__ == "__main__":
     R_OUTPORT = config["rightChannelOutPort"]
     GAIN_MEDIA = Value(ctypes.c_float, float(config["mediaInputGainStateDisabled"]), lock=True)
     GAIN_MIC = Value(ctypes.c_float, float(config["micInputGainStateDisabled"]), lock=True)
-    RELOAD_SIGNAL = Value(ctypes.c_bool, False, lock=True)
 
     inport_pairs = []
 
@@ -101,9 +101,13 @@ if __name__ == "__main__":
         outR.get_array()[:] = buf_mixR
 
         if frames == BLOCK_SIZE:
-            q_audio_chunks.put(
-                np.stack((buf_micL, buf_micR))
-            )
+
+            try:
+                q_audio_chunks.put(
+                    np.stack((buf_micL, buf_micR))
+                )
+            except ShutDown:
+                pass
 
     client.set_process_callback(process)
 
@@ -125,10 +129,10 @@ if __name__ == "__main__":
 
         print("JACK CLIENT STARTED, ctrl+c TO QUIT".center(get_terminal_size().columns, "="))
 
-        p1 = Process(target=chunk_handler, args=(BLOCK_SIZE, q_audio_chunks, q_transcriber, q_volume_control, RELOAD_SIGNAL))
-        p2 = Process(target=transcription_handler, args=(q_transcriber, q_volume_control, RELOAD_SIGNAL))
-        p3 = Process(target=volume_handler, args=(GAIN_MIC, GAIN_MEDIA, q_volume_control, RELOAD_SIGNAL))
-        p4 = Process(target=socket_server, args=(GAIN_MEDIA, GAIN_MIC, RELOAD_SIGNAL))
+        p1 = Process(target=chunk_handler, args=(BLOCK_SIZE, q_audio_chunks, q_transcriber, q_volume_control))
+        p2 = Process(target=transcription_handler, args=(q_transcriber, q_volume_control))
+        p3 = Process(target=volume_handler, args=(GAIN_MIC, GAIN_MEDIA, q_volume_control))
+        p4 = Process(target=socket_server, args=(GAIN_MEDIA, GAIN_MIC))
 
         try:
             p1.start()
@@ -139,17 +143,21 @@ if __name__ == "__main__":
             while True:
 
                 p1.join()
+                print("Audio Chunk Handler process sucessfully exited with code 0")
                 p2.join()
+                print("Transcription Handler process sucessfully exited with code 0")
                 p3.join()
+                print("Volume Handler process sucessfully exited with code 0")
                 
-                print("Handler processes stopped due to config reload, restarting...")
+                print("All Handler processes stopped due to config reload, restarting...")
+
+                q_audio_chunks = Queue()
+                q_transcriber = Queue()
+                q_volume_control = Queue()
 
                 p1 = Process(target=chunk_handler, args=(BLOCK_SIZE, q_audio_chunks, q_transcriber, q_volume_control, RELOAD_SIGNAL))
                 p2 = Process(target=transcription_handler, args=(q_transcriber, q_volume_control, RELOAD_SIGNAL))
                 p3 = Process(target=volume_handler, args=(GAIN_MIC, GAIN_MEDIA, q_volume_control, RELOAD_SIGNAL))
-
-                while RELOAD_SIGNAL.value:
-                    sleep(0.5)
                 
                 p1.start()
                 p2.start()

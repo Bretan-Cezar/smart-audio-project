@@ -1,3 +1,4 @@
+import multiprocessing
 import socket
 import json
 from time import sleep
@@ -62,14 +63,23 @@ def recv_data(server_socket: socket.socket) -> bytes | None:
         data = server_socket.recv(4096)
 
         if not data:
-            print("W: Empty Buffer Received")
+            print("E: No buffer received")
+            return None
 
-        # Trim NULL terminators
-        data, _, _ = data.partition(b'\x00')
+        elif len(data) == 0:
+            print("W: Empty buffer received")
+            return None
 
-        print(f"{str(len(data))} bytes received over bluetooth connection")
+        else:
+            # Trim NULL terminators
+            data, _, _ = data.partition(b'\x00')
 
-        return data
+            print(f"{str(len(data))} bytes received over bluetooth connection")
+
+            if len(data) != 0:
+                return data
+            else:
+                return None
 
     except (Exception, IOError) as e:
 
@@ -97,7 +107,7 @@ def send_data(server_socket: socket.socket, data: bytes):
         print(f"Exception encountered on send: {e.with_traceback(None)}")
 
 
-def socket_server(GAIN_MEDIA, GAIN_MIC, RELOAD_SIGNAL):
+def socket_server(GAIN_MEDIA, GAIN_MIC, q1: multiprocessing.Queue, q2: multiprocessing.Queue, q3: multiprocessing.Queue):
 
     print("Socket Server started.")
 
@@ -139,18 +149,17 @@ def socket_server(GAIN_MEDIA, GAIN_MIC, RELOAD_SIGNAL):
 
                         with open("config.json", "wt") as cfg:
                             json.dump(config, cfg, indent=4)
+
+                        q1.shutdown(immediate=True)
+                        q2.shutdown(immediate=True)
+                        q3.shutdown(immediate=True)
                                         
-                        RELOAD_SIGNAL.value = True
-
-                        sleep(5)
-
-                        RELOAD_SIGNAL.value = False
 
                 except KeyboardInterrupt:
 
                     server_socket.close()
 
-                    print("Socket Server stopped")
+                    print("Socket Server exiting status 15...")
                     sys.exit(15)
 
 
