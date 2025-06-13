@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bretancezar.samcontrolapp.service.SmartAmbienceService
 import com.bretancezar.samcontrolapp.ui.screen.DeviceScreen
+import com.bretancezar.samcontrolapp.ui.screen.FirstScreen
 import com.bretancezar.samcontrolapp.ui.screen.SmartAmbienceScreen
 import com.bretancezar.samcontrolapp.ui.screen.SoundScreen
 import com.bretancezar.samcontrolapp.utils.Screens
@@ -42,7 +43,8 @@ fun AppNavigation(
     applicationContext: Context
 ) {
     val navController = rememberNavController()
-    val startDestination = Screens.SMART_AMBIENCE
+    // val startDestination = Screens.SMART_AMBIENCE
+    val startDestination = Screens.FIRST_SCREEN
     val navigationViewModel = viewModel {  NavigationViewModel(startDestination, navController) }
     val smartAmbienceService = SmartAmbienceService(applicationContext)
     val smartAmbienceViewModel = viewModel { SmartAmbienceViewModel(smartAmbienceService) }
@@ -62,7 +64,11 @@ fun AppNavigation(
             navController = navController,
             startDestination = startDestination.routeName
         ) {
-
+            composable (
+                route = Screens.FIRST_SCREEN.routeName
+            ) {
+                FirstScreen()
+            }
             composable(
                 route = Screens.SMART_AMBIENCE.routeName
             ) {
@@ -95,6 +101,9 @@ fun BottomNavBar(viewModel: NavigationViewModel) {
         windowInsets = NavigationBarDefaults.windowInsets
     ) {
         screenList.forEachIndexed { _, screen ->
+            if (screen.routeName == "first_screen") {
+                return@forEachIndexed
+            }
             NavigationBarItem(
                 icon = {
                     Icon(painter = painterResource(screen.icon), contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.White)
