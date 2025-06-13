@@ -184,7 +184,7 @@ fun PhrasesCard(
                     if (it.length <= characterLimit)
                         fieldText = it
                 },
-                isError = fieldText == "",
+                isError = fieldText == "" || phrasesList.contains(fieldText),
                 singleLine = true,
                 textStyle = TextStyle (
                     fontSize = 16.sp
@@ -203,7 +203,7 @@ fun PhrasesCard(
 
             Button(
                 onClick = {
-                    if (fieldText != "")
+                    if (fieldText != "" && !phrasesList.contains(fieldText))
                         viewModel.addPhrase(fieldText)
                 },
                 modifier = Modifier.size(42.dp),
