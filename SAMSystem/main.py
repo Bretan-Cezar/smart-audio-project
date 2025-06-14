@@ -8,7 +8,6 @@ from vol_ctrl import volume_handler
 from transcriber import transcription_handler
 from audio_chunk_handler import chunk_handler
 from multiprocessing import Value, Queue, Process
-from queue import ShutDown
 from typing import Any
 import ctypes
 import sys
@@ -42,6 +41,7 @@ if __name__ == "__main__":
     R_OUTPORT = config["rightChannelOutPort"]
     GAIN_MEDIA = Value(ctypes.c_float, float(config["mediaInputGainStateDisabled"]), lock=True)
     GAIN_MIC = Value(ctypes.c_float, float(config["micInputGainStateDisabled"]), lock=True)
+    ENABLED = Value(ctypes.c_bool, False, lock=True)
 
     inport_pairs = []
 
@@ -106,7 +106,7 @@ if __name__ == "__main__":
                 q_audio_chunks.put(
                     np.stack((buf_micL, buf_micR))
                 )
-            except ShutDown:
+            except ValueError:
                 pass
 
     client.set_process_callback(process)
@@ -129,10 +129,10 @@ if __name__ == "__main__":
 
         print("JACK CLIENT STARTED, ctrl+c TO QUIT".center(get_terminal_size().columns, "="))
 
-        p1 = Process(target=chunk_handler, args=(BLOCK_SIZE, q_audio_chunks, q_transcriber, q_volume_control))
-        p2 = Process(target=transcription_handler, args=(q_transcriber, q_volume_control))
+        p1 = Process(target=chunk_handler, args=(BLOCK_SIZE, q_audio_chunks, q_transcriber, q_volume_control, ENABLED))
+        p2 = Process(target=transcription_handler, args=(q_transcriber, q_volume_control, ENABLED))
         p3 = Process(target=volume_handler, args=(GAIN_MIC, GAIN_MEDIA, q_volume_control))
-        p4 = Process(target=socket_server, args=(GAIN_MEDIA, GAIN_MIC))
+        p4 = Process(target=socket_server, args=(GAIN_MEDIA, GAIN_MIC, q_audio_chunks, q_transcriber, q_volume_control))
 
         try:
             p1.start()
@@ -143,36 +143,59 @@ if __name__ == "__main__":
             while True:
 
                 p1.join()
+                print("DEBUG: p1 joined")
+                # q_audio_chunks.close()
+                # print("DEBUG: q1 closed")
+                # q_audio_chunks.join_thread()
+                # print("DEBUG: q1 thread joined")
+                p1.close()
                 print("Audio Chunk Handler process sucessfully exited with code 0")
+
                 p2.join()
+                print("DEBUG: p2 joined")
+                # q_transcriber.close()
+                # print("DEBUG: q2 closed")
+                # q_transcriber.join_thread()
+                # print("DEBUG: q2 thread joined")
+                p2.close()
                 print("Transcription Handler process sucessfully exited with code 0")
+
                 p3.join()
+                print("DEBUG: p3 joined")
+                # q_volume_control.close()
+                # print("DEBUG: q3 closed")
+                # q_volume_control.join_thread()
+                # print("DEBUG: q3 thread joined")
+                p3.close()
                 print("Volume Handler process sucessfully exited with code 0")
                 
                 print("All Handler processes stopped due to config reload, restarting...")
 
-                q_audio_chunks = Queue()
-                q_transcriber = Queue()
-                q_volume_control = Queue()
-
-                p1 = Process(target=chunk_handler, args=(BLOCK_SIZE, q_audio_chunks, q_transcriber, q_volume_control, RELOAD_SIGNAL))
-                p2 = Process(target=transcription_handler, args=(q_transcriber, q_volume_control, RELOAD_SIGNAL))
-                p3 = Process(target=volume_handler, args=(GAIN_MIC, GAIN_MEDIA, q_volume_control, RELOAD_SIGNAL))
+                # q_audio_chunks = Queue()
+                # q_transcriber = Queue()
+                # q_volume_control = Queue()
+                 
+                p1 = Process(target=chunk_handler, args=(BLOCK_SIZE, q_audio_chunks, q_transcriber, q_volume_control, ENABLED))
+                p2 = Process(target=transcription_handler, args=(q_transcriber, q_volume_control, ENABLED))
+                p3 = Process(target=volume_handler, args=(GAIN_MIC, GAIN_MEDIA, q_volume_control))
                 
                 p1.start()
                 p2.start()
                 p3.start()
 
         except KeyboardInterrupt:
-            p1.join()
-            p2.join()
-            p3.join()
-            p4.join()
+            p1.terminate()
+            print("DEBUG: p1 terminated")
+            p2.terminate()
+            print("DEBUG: p2 terminated")
+            p3.terminate()
+            print("DEBUG: p3 terminated")
+            p4.terminate()
+            print("DEBUG: p4 terminated")
 
             print("\nDeactivating JACK Client...")
 
             client.deactivate()
-            client.close()
 
             sys.exit(15)
 

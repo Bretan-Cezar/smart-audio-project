@@ -18,8 +18,8 @@
     "bufferOverlapDuration": 0.5,
     "vadModelPath": "./silero_vad.onnx",
     "vadFilterPassDurationThreshold": 0.5,
-    "transcriberModelPath": "./vosk-model-en-us-0.22-lgraph",
+    "transcriberModelPath": "./vosk-model-small-en-us-0.15",
     "phraseList": [
-        "hey there"
+        "caesar"
     ]
 }

@@ -1,7 +1,6 @@
 import multiprocessing
 import socket
 import json
-from time import sleep
 import sys
 
 def get_bluetooth_socket() -> socket.socket | None:
@@ -62,26 +61,35 @@ def recv_data(server_socket: socket.socket) -> bytes | None:
     try:
         data = server_socket.recv(4096)
 
+        full_length = len(data)
+
         if not data:
             print("E: No buffer received")
             return None
 
-        elif len(data) == 0:
+        elif full_length == 0:
             print("W: Empty buffer received")
             return None
 
         else:
+
             # Trim NULL terminators
             data, _, _ = data.partition(b'\x00')
 
-            print(f"{str(len(data))} bytes received over bluetooth connection")
+            valid_length = len(data)
+
+            print(f"{valid_length} non-null bytes received ({full_length} total ; {full_length - valid_length} ignored) over bluetooth connection")
 
             if len(data) != 0:
                 return data
             else:
                 return None
 
-    except (Exception, IOError) as e:
+    except ConnectionResetError as cre:
+        print(f"Client disconnected")
+        raise cre
+
+    except Exception as e:
 
         print(f"Exception encountered on recv: {e.with_traceback(None)}")
         return None
@@ -114,53 +122,69 @@ def socket_server(GAIN_MEDIA, GAIN_MIC, q1: multiprocessing.Queue, q2: multiproc
     with open("config.json", "rt") as cfg:
         config = json.load(cfg)
 
-    server_socket: socket.socket | None = get_bluetooth_socket()
+    server_socket: socket.socket | None = None
+    
+    while True:
+        try:
 
-    if server_socket != None:
-        listen_for_bluetooth_connection(server_socket, int(config["bluetoothSocketChannel"]))
+            server_socket = get_bluetooth_socket()
 
-        server_socket = accept_bluetooth_connection(server_socket)
+            if server_socket != None:
+                listen_for_bluetooth_connection(server_socket, int(config["bluetoothSocketChannel"]))
 
-        if server_socket != None:
-            current_modifiable_settings = {
-                "smartAmbienceMode": str(config["smartAmbienceMode"]),
-                "micInputGainStateEnabled": float(config["micInputGainStateEnabled"]),
-                "phraseList": list(config["phraseList"])
-            }
+                server_socket = accept_bluetooth_connection(server_socket)
 
-            data = bytes(json.dumps(current_modifiable_settings), encoding='utf-8')
-            
-            print(len(data))
+                if server_socket != None:
+                    current_modifiable_settings = {
+                        "smartAmbienceMode": str(config["smartAmbienceMode"]),
+                        "micInputGainStateEnabled": float(config["micInputGainStateEnabled"]),
+                        "phraseList": list(config["phraseList"])
+                    }
 
-            send_data(server_socket, data)
+                    data = bytes(json.dumps(current_modifiable_settings), encoding='utf-8')
+                    
+                    print(len(data))
 
-            while True:
+                    send_data(server_socket, data)
 
-                try:
+                    while True:
+                        try:
 
-                    data = recv_data(server_socket)
+                            try:
+                                data = recv_data(server_socket)
+                            except ConnectionResetError as _:
+                                server_socket.close()
+                                break
 
-                    if data != None:
-                        
-                        modified_settings: dict = json.loads(str(data, encoding='utf-8'))
-                        
-                        for k, v in modified_settings.items():
-                            config[k] = v
+                            if data != None:
+                                
+                                modified_settings: dict = json.loads(str(data, encoding='utf-8'))
+                                
+                                for k, v in modified_settings.items():
+                                    config[k] = v
 
-                        with open("config.json", "wt") as cfg:
-                            json.dump(config, cfg, indent=4)
+                                with open("config.json", "wt") as cfg:
+                                    json.dump(config, cfg, indent=4)
 
-                        q1.shutdown(immediate=True)
-                        q2.shutdown(immediate=True)
-                        q3.shutdown(immediate=True)
-                                        
+                                # "Shut down" queues
+                                q1.put(None)
+                                q2.put(None)
+                                q3.put(None)
 
-                except KeyboardInterrupt:
+                        except KeyboardInterrupt:
 
-                    server_socket.close()
+                            server_socket.close()
+                            print("Socket Server exiting status 15...")
+                            sys.exit(15)
 
-                    print("Socket Server exiting status 15...")
-                    sys.exit(15)
+                else:
+                    break
 
+            else:
+                break
 
+        except KeyboardInterrupt:
+
+            print("Socket Server exiting status 15...")
+            sys.exit(15)
 
