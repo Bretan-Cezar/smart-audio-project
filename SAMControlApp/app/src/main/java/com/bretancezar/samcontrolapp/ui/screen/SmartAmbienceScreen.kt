@@ -1,5 +1,6 @@
 package com.bretancezar.samcontrolapp.ui.screen
 
+import androidx.annotation.RequiresPermission
 import com.bretancezar.samcontrolapp.ui.theme.Red
 import com.bretancezar.samcontrolapp.R
 import androidx.compose.foundation.BorderStroke
@@ -7,7 +8,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,22 +19,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.TextField
-import androidx.compose.material.TextFieldColors
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -44,17 +38,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bretancezar.samcontrolapp.ui.theme.Green
 import com.bretancezar.samcontrolapp.utils.SmartAmbienceMode
 import com.bretancezar.samcontrolapp.viewmodel.SmartAmbienceViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 
+@RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun SmartAmbienceScreen(
     viewModel: SmartAmbienceViewModel
@@ -73,6 +65,7 @@ fun SmartAmbienceScreen(
     }
 }
 
+@RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun ModeCard(
     viewModel: SmartAmbienceViewModel,
@@ -135,6 +128,7 @@ fun ModeCard(
     }
 }
 
+@RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun ModeList(
     viewModel: SmartAmbienceViewModel
@@ -149,10 +143,13 @@ fun ModeList(
     }
 }
 
+@RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun PhrasesCard(
     viewModel: SmartAmbienceViewModel
 ) {
+
+    val characterLimit = 64
 
     var fieldText: String by remember {
         mutableStateOf("")
@@ -183,8 +180,11 @@ fun PhrasesCard(
         ) {
             TextField(
                 value = fieldText,
-                onValueChange = { fieldText = it },
-                isError = fieldText == "",
+                onValueChange = {
+                    if (it.length <= characterLimit)
+                        fieldText = it
+                },
+                isError = fieldText == "" || phrasesList.contains(fieldText),
                 singleLine = true,
                 textStyle = TextStyle (
                     fontSize = 16.sp
@@ -203,14 +203,14 @@ fun PhrasesCard(
 
             Button(
                 onClick = {
-                    if (fieldText != "")
+                    if (fieldText != "" && !phrasesList.contains(fieldText))
                         viewModel.addPhrase(fieldText)
                 },
                 modifier = Modifier.size(42.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(Green),
-                contentPadding = PaddingValues(0.dp)
-
+                contentPadding = PaddingValues(0.dp),
+                enabled = phrasesList.size <= 8
             ) {
                 Image(
                     modifier = Modifier.fillMaxSize(),
@@ -233,7 +233,7 @@ fun PhrasesCard(
                         Modifier.padding(10.dp),
                         )
                     Button(
-                        onClick = {viewModel.deletePhrase(it)},
+                        onClick = { viewModel.deletePhrase(it) },
                         shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(Red),
                         contentPadding = PaddingValues(0.dp),

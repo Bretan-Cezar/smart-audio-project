@@ -6,21 +6,20 @@
     "rightChannelMicPort": "mic:capture_2",
     "leftChannelOutPort": "system:playback_1",
     "rightChannelOutPort": "system:playback_2",
+    "bluetoothSocketChannel": 1,
     "mediaInputGainStateDisabled": 1.0,
     "micInputGainStateDisabled": 0.0,
     "mediaInputGainStateEnabled": 0.2,
     "micInputGainStateEnabled": 0.8,
+    "smartAmbienceMode": "light",
     "recordingSampleRate": 48000,
     "transcriberSampleRate": 16000,
     "bufferDuration": 2.0,
     "bufferOverlapDuration": 0.5,
     "vadModelPath": "./silero_vad.onnx",
     "vadFilterPassDurationThreshold": 0.5,
-    "transcriberModelPath": "./vosk-model-en-us-0.22-lgraph",
+    "transcriberModelPath": "./vosk-model-small-en-us-0.15",
     "phraseList": [
-        "hey foo",
-        "hey caesar",
-        "yo caesar",
-        "yo foo"
+        "caesar"
     ]
 }

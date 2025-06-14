@@ -42,7 +42,7 @@ def enhance(buffer) -> np.ndarray:
     return buffer
 
 
-def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control):
+def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control, enabled):
     print("Chunk Handler Process started. Initializing VAD model...")
 
     with open("config.json", "rt") as cfg:
@@ -64,8 +64,6 @@ def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control):
     audio_buffer = np.empty((2, buffer_size), dtype=np.float32)
     length = 0
 
-    enabled = False
-
     print("VAD Model Inintialized!")
 
     time_stamp = time.time()
@@ -73,8 +71,12 @@ def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control):
     while True:
 
         try:
+
             audio_chunk = q_chunks.get()
-            
+
+            if audio_chunk is None:
+                break
+
             chunk_length = audio_chunk.shape[1]
 
             audio_buffer[:, length:length+chunk_length] = audio_chunk[:, :]
@@ -94,20 +96,30 @@ def chunk_handler(block_size, q_chunks, q_transcriber, q_volume_control):
                 if (silero_detect_speech(model, audio_buffer_channel_mix, float(config["vadFilterPassDurationThreshold"]), transcriber_sr)):
                     print("--Speech detected--")
 
-                    q_transcriber.put(audio_buffer_channel_mix.astype(np.float16))
+                    if enabled.value == False:
+
+                        q_transcriber.put(audio_buffer_channel_mix.astype(np.float16))
                     
                     time_stamp = time.time()
-                    enabled = True
+
                 else:
+
                     curr_time = time.time()
-                    if (curr_time - time_stamp >= 10.0 and enabled == True):
-                        print("--SAM is turned off--")
+
+                    if (curr_time - time_stamp >= 10.0 and enabled.value == True):
+
+                        print("--SAM toggled to OFF--")
+
                         q_volume_control.put(VolumeCommand(target_mic_gain_disabled, target_media_gain_disabled))
-                        enabled = False
+
+                        enabled.value = False
 
                 print(q_transcriber.qsize())
 
         except KeyboardInterrupt:
-            print("Chunk Handler Process stopped")
-            sys.exit()           
 
+            print("Chunk Handler Process exiting status 15...")
+            sys.exit(15)           
+
+    print("Chunk Handler Process exiting status 0...")
+    sys.exit(0)

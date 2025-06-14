@@ -3,10 +3,8 @@ package com.bretancezar.samcontrolapp.navigation
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
-import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.rememberScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -35,6 +33,7 @@ import com.bretancezar.samcontrolapp.utils.Screens
 import com.bretancezar.samcontrolapp.viewmodel.NavigationViewModel
 import com.bretancezar.samcontrolapp.viewmodel.SmartAmbienceViewModel
 
+
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -43,13 +42,13 @@ fun AppNavigation(
     applicationContext: Context
 ) {
     val navController = rememberNavController()
-    // val startDestination = Screens.SMART_AMBIENCE
-    val startDestination = Screens.FIRST_SCREEN
+
+    val startDestination = Screens.SMART_AMBIENCE
+
     val navigationViewModel = viewModel {  NavigationViewModel(startDestination, navController) }
+
     val smartAmbienceService = SmartAmbienceService(applicationContext)
     val smartAmbienceViewModel = viewModel { SmartAmbienceViewModel(smartAmbienceService) }
-
-    Log.i("BT", smartAmbienceService.checkConnected().toString())
 
     Scaffold(
         bottomBar = { BottomNavBar(navigationViewModel) },
@@ -64,11 +63,13 @@ fun AppNavigation(
             navController = navController,
             startDestination = startDestination.routeName
         ) {
+          
             composable (
                 route = Screens.FIRST_SCREEN.routeName
             ) {
                 FirstScreen()
             }
+            
             composable(
                 route = Screens.SMART_AMBIENCE.routeName
             ) {
@@ -101,9 +102,11 @@ fun BottomNavBar(viewModel: NavigationViewModel) {
         windowInsets = NavigationBarDefaults.windowInsets
     ) {
         screenList.forEachIndexed { _, screen ->
+          
             if (screen.routeName == "first_screen") {
                 return@forEachIndexed
             }
+            
             NavigationBarItem(
                 icon = {
                     Icon(painter = painterResource(screen.icon), contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.White)

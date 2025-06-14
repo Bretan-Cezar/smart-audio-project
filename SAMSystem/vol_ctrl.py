@@ -28,6 +28,9 @@ def volume_handler(GAIN_MIC, GAIN_MEDIA, q_volume_control):
 
             volume_targets: VolumeCommand = q_volume_control.get() 
 
+            if volume_targets is None:
+                break
+
             print(f"Volume Handler received VolumeCommand[ GAIN_MEDIA_TARGET={volume_targets.GAIN_MEDIA_TARGET} ; GAIN_MIC_TARGET={volume_targets.GAIN_MIC_TARGET} ]\nAdjusting Volume...")
 
             if GAIN_MIC.value < volume_targets.GAIN_MIC_TARGET:
@@ -55,6 +58,9 @@ def volume_handler(GAIN_MIC, GAIN_MEDIA, q_volume_control):
                 time.sleep(0.1)
                 
         except KeyboardInterrupt:
-            print("Volume Handler Process stopped")
-            sys.exit()
+            print("Volume Handler Process exiting status 15...")
+            sys.exit(15)
+
+    print("Volume Handler Process exiting status 0...")
+    sys.exit(0)
 

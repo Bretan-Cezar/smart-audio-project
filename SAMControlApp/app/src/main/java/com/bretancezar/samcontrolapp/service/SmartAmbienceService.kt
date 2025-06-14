@@ -3,77 +3,119 @@ package com.bretancezar.samcontrolapp.service
 import android.Manifest
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothSocket
 import android.content.Context
-import android.util.Log
 import androidx.annotation.RequiresPermission
 import com.bretancezar.samcontrolapp.utils.SmartAmbienceMode
 import kotlinx.serialization.json.Json
-import java.util.UUID
 
 class SmartAmbienceService(
     private val _applicationContext: Context
 ) {
-
     private var _bluetooth: BluetoothManager = _applicationContext.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-    private var _address = "DC:A6:32:70:23:BB"
-    private var _uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+    private var _targetAddress = "DC:A6:32:70:23:BB"
+    private var _socket: BluetoothSocket? = null
+    private var _device: BluetoothDevice? = null
+    private var _channelNo: Int = 1
+    private var phraseList: List<String>
+    private var micInputGainStateEnabled: Float
+    private var smartAmbienceMode: SmartAmbienceMode
+
+    init {
+        _device = getDevice()
+
+        connectDevice()
+
+        val currentSettings = fetchCurrentSettings()
+
+        if (currentSettings == null)
+            throw ServiceException()
+
+        phraseList = currentSettings.phraseList
+        micInputGainStateEnabled = currentSettings.micInputGainStateEnabled
+        smartAmbienceMode = SmartAmbienceMode.entries.find { it.internalName == currentSettings.smartAmbienceMode }!!
+    }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun getDevice(): BluetoothDevice? {
-        return _bluetooth.getConnectedDevices(BluetoothProfile.GATT).find { it.address == _address }
+        return _bluetooth.adapter.getRemoteDevice(_targetAddress)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun checkConnected(): Boolean {
-        
-        return getDevice() != null
-    }
-
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun sendPhraseList(phraseList: List<String>) {
-        val device = getDevice()
-
-        if (device == null)
+    private fun connectDevice() {
+        if (_device == null)
             throw ServiceException()
 
-        val sock = device.createRfcommSocketToServiceRecord(_uuid)
+        val deviceClass = _device?.javaClass
 
-        sock.connect()
+        if (deviceClass == null)
+            throw ServiceException()
 
-        val fd = sock.outputStream
+        val createSocket = deviceClass.getMethod("createRfcommSocket", Int::class.java)
 
-        fd.write(Json.encodeToString(phraseList).toByteArray(Charsets.UTF_8))
+        _socket = (createSocket.invoke(_device, _channelNo)) as BluetoothSocket
 
-        sock.close()
+        if (_socket == null) {
+            throw ServiceException()
+        }
+
+        _socket!!.connect()
+
+        while (!_socket!!.isConnected) {}
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun getPhraseList(phraseList: List<String>): List<String> {
-        val device = getDevice()
+    private fun fetchCurrentSettings(): ModifiableSettingsDTO? {
+        val fd = _socket?.inputStream
 
-        if (device == null)
-            throw ServiceException()
+        var data = ByteArray(4096)
+        fd?.read(data)
 
-        val sock = device.createRfcommSocketToServiceRecord(_uuid)
+        // At least the chars {}": should be present
+        if (data.toSet().size >= 4) {
+            data = data.copyOfRange(0, data.indexOfFirst { it == 0.toByte() })
 
-        sock.connect()
+            return Json.decodeFromString<ModifiableSettingsDTO>(data.toString(Charsets.UTF_8))
+        }
 
-        val fd = sock.inputStream
+        return null
+    }
 
-        val phraseList: List<String> = Json.decodeFromString(fd.readBytes().toString())
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun setPhraseList(phraseList: List<String>) {
+        val fd = _socket?.outputStream
 
-        sock.close()
+        val newSettings = ModifiableSettingsDTO(smartAmbienceMode.internalName, phraseList, micInputGainStateEnabled)
 
+        val data = Json.encodeToString(newSettings).toByteArray(Charsets.UTF_8).copyOf(4096)
+
+        fd?.write(data)
+
+        this.phraseList = phraseList
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun setMode(smartAmbienceMode: SmartAmbienceMode) {
+        val fd = _socket?.outputStream
+
+        val newSettings = ModifiableSettingsDTO(smartAmbienceMode.internalName, phraseList, micInputGainStateEnabled)
+
+        val data = Json.encodeToString(newSettings).toByteArray(Charsets.UTF_8).copyOf(4096)
+
+        fd?.write(data)
+
+        this.smartAmbienceMode = smartAmbienceMode
+    }
+
+    fun getCurrentPhraseList(): List<String> {
         return phraseList
     }
 
-    fun setMode(smartAmbienceMode: SmartAmbienceMode) {
-
+    fun getCurrentMode(): SmartAmbienceMode {
+        return smartAmbienceMode
     }
 
-    fun getMode(): SmartAmbienceMode {
-        return SmartAmbienceMode.MODERATE
+    fun getCurrentMicGain(): Float {
+        return micInputGainStateEnabled
     }
 }
