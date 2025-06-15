@@ -42,15 +42,25 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bretancezar.samcontrolapp.ui.common.ProgressDialog
 import com.bretancezar.samcontrolapp.ui.theme.Green
+import com.bretancezar.samcontrolapp.utils.Screens
 import com.bretancezar.samcontrolapp.utils.SmartAmbienceMode
+import com.bretancezar.samcontrolapp.viewmodel.NavigationViewModel
 import com.bretancezar.samcontrolapp.viewmodel.SmartAmbienceViewModel
 
 @RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun SmartAmbienceScreen(
-    viewModel: SmartAmbienceViewModel
+    smartAmbienceViewModel: SmartAmbienceViewModel,
+    navigationViewModel: NavigationViewModel
 ) {
+
+    val onErrorAction = {
+        navigationViewModel.setCurrentScreen(Screens.FIRST_SCREEN)
+    }
+
+    val awaitingResponse by smartAmbienceViewModel.awaitingResponse.collectAsState()
 
     Column(
         modifier = Modifier
@@ -60,8 +70,12 @@ fun SmartAmbienceScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(40.dp)
     ) {
-        ModeList(viewModel)
-        PhrasesCard(viewModel)
+        ModeList(smartAmbienceViewModel, onErrorAction)
+        PhrasesCard(smartAmbienceViewModel, onErrorAction)
+    }
+
+    if (awaitingResponse) {
+        ProgressDialog()
     }
 }
 
@@ -70,7 +84,8 @@ fun SmartAmbienceScreen(
 fun ModeCard(
     viewModel: SmartAmbienceViewModel,
     mode: SmartAmbienceMode,
-    isSelected: Boolean
+    isSelected: Boolean,
+    onErrorAction: () -> Unit
 ) {
 
     val backgroundColor = if (!isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.secondaryContainer
@@ -89,7 +104,7 @@ fun ModeCard(
             .height(IntrinsicSize.Min)
             .clickable {
                 if (!isSelected)
-                    viewModel.setSelectedMode(mode)
+                    viewModel.setSelectedMode(mode, onErrorAction)
             },
 
         verticalAlignment = Alignment.CenterVertically
@@ -113,7 +128,6 @@ fun ModeCard(
             )
         }
 
-
         Column(
             modifier = Modifier
                 .padding(20.dp)
@@ -131,14 +145,15 @@ fun ModeCard(
 @RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun ModeList(
-    viewModel: SmartAmbienceViewModel
+    viewModel: SmartAmbienceViewModel,
+    onErrorAction: () -> Unit
 ) {
     val list: List<SmartAmbienceMode> = viewModel.modeList
     val selectedMode by viewModel.selectedMode.collectAsState()
 
     list.forEach { mode ->
         ModeCard(
-            viewModel, mode, selectedMode == mode
+            viewModel, mode, selectedMode == mode, onErrorAction
         )
     }
 }
@@ -146,7 +161,8 @@ fun ModeList(
 @RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
 @Composable
 fun PhrasesCard(
-    viewModel: SmartAmbienceViewModel
+    viewModel: SmartAmbienceViewModel,
+    onErrorAction: () -> Unit
 ) {
 
     val characterLimit = 64
@@ -184,7 +200,7 @@ fun PhrasesCard(
                     if (it.length <= characterLimit)
                         fieldText = it
                 },
-                isError = fieldText == "" || phrasesList.contains(fieldText),
+                isError = fieldText == "" || (phrasesList.contains(fieldText)),
                 singleLine = true,
                 textStyle = TextStyle (
                     fontSize = 16.sp
@@ -204,7 +220,7 @@ fun PhrasesCard(
             Button(
                 onClick = {
                     if (fieldText != "" && !phrasesList.contains(fieldText))
-                        viewModel.addPhrase(fieldText)
+                        viewModel.addPhrase(fieldText, onErrorAction)
                 },
                 modifier = Modifier.size(42.dp),
                 shape = CircleShape,
@@ -231,9 +247,9 @@ fun PhrasesCard(
                     Text(
                         it,
                         Modifier.padding(10.dp),
-                        )
+                    )
                     Button(
-                        onClick = { viewModel.deletePhrase(it) },
+                        onClick = { viewModel.deletePhrase(it, onErrorAction) },
                         shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(Red),
                         contentPadding = PaddingValues(0.dp),

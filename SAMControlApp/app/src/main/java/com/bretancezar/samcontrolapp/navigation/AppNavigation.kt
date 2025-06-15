@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.bretancezar.samcontrolapp.service.ServiceException
 import com.bretancezar.samcontrolapp.service.SmartAmbienceService
 import com.bretancezar.samcontrolapp.ui.screen.DeviceScreen
 import com.bretancezar.samcontrolapp.ui.screen.FirstScreen
@@ -43,15 +44,21 @@ fun AppNavigation(
 ) {
     val navController = rememberNavController()
 
-    val startDestination = Screens.SMART_AMBIENCE
-
-    val navigationViewModel = viewModel {  NavigationViewModel(startDestination, navController) }
-
     val smartAmbienceService = SmartAmbienceService(applicationContext)
+
+    try {
+        smartAmbienceService.init()
+    }
+    catch (_: ServiceException) {}
+
+    val startDestination = if (smartAmbienceService.isConnected()) Screens.SMART_AMBIENCE else Screens.FIRST_SCREEN
+
+    val navigationViewModel = viewModel {  NavigationViewModel(navController, smartAmbienceService) }
+
     val smartAmbienceViewModel = viewModel { SmartAmbienceViewModel(smartAmbienceService) }
 
     Scaffold(
-        bottomBar = { BottomNavBar(navigationViewModel) },
+        bottomBar = { if (smartAmbienceService.isConnected()) BottomNavBar(navigationViewModel) },
         topBar = {
             TopAppBar(
                 title = { Text("SAM Control App") }
@@ -67,13 +74,13 @@ fun AppNavigation(
             composable (
                 route = Screens.FIRST_SCREEN.routeName
             ) {
-                FirstScreen()
+                FirstScreen(navigationViewModel)
             }
             
             composable(
                 route = Screens.SMART_AMBIENCE.routeName
             ) {
-                SmartAmbienceScreen(smartAmbienceViewModel)
+                SmartAmbienceScreen(smartAmbienceViewModel, navigationViewModel)
             }
 
             composable(
@@ -103,10 +110,6 @@ fun BottomNavBar(viewModel: NavigationViewModel) {
     ) {
         screenList.forEachIndexed { _, screen ->
           
-            if (screen.routeName == "first_screen") {
-                return@forEachIndexed
-            }
-            
             NavigationBarItem(
                 icon = {
                     Icon(painter = painterResource(screen.icon), contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.White)
